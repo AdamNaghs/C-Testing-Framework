@@ -97,10 +97,10 @@ TEST_MAKE(Null_Deref)
     TEST_PASS();
 }
 
-TEST_SUITE_MAKE(Null_Deref)
+TEST_SUITE_MAKE(Intentional_Fail)
 {
-    TEST_SUITE_LINK(Null_Deref, Null_Deref);
-    TEST_SUITE_END(Null_Deref);
+    TEST_SUITE_LINK(Intentional_Fail, Null_Deref);
+    TEST_SUITE_END(Intentional_Fail);
 }
 
 int main()
@@ -108,7 +108,7 @@ int main()
     TEST_SUITE_RUN(Example);
     TEST_SUITE_RUN(Vec);
     TEST_SUITE_RUN(Map);
-    TEST_SUITE_RUN(Null_Deref);
+    TEST_SUITE_RUN(Intentional_Fail);
     return 0;
 }
 

@@ -25,6 +25,7 @@
 /**
  * @brief Used at the start of a test function to define the test.
  *
+ * @return call TEST_PASS() or TEST_FAIL() or return TEST_PASS_VALUE or !TEST_PASS_VALUE
  */
 #define TEST_MAKE(test_name) int test_name##_func()
 

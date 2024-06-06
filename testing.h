@@ -204,9 +204,15 @@
         free((suite).tests);      \
     } while (0)
 
+bool __testing_try_use_colors = true;
+
 /* Meant to be crossplatform */
 bool __testing_does_terminal_support_ansi_color()
 {
+    if (!__testing_try_use_colors)
+    {
+        return false;
+    }
     static bool ran_before = false;
     static bool supports_colors = false;
 

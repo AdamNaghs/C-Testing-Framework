@@ -90,10 +90,27 @@ TEST_SUITE_MAKE(Map)
     TEST_SUITE_END(Map);
 }
 
+TEST_MAKE(Null_Deref)
+{
+    int *ptr = NULL;
+    int i = *ptr;
+    TEST_PASS();
+}
+
+TEST_SUITE_MAKE(Null_Deref)
+{
+    TEST_SUITE_LINK(Null_Deref, Null_Deref);
+    TEST_SUITE_END(Null_Deref);
+}
+
 int main()
 {
-    TEST_SUITE_RUN(Map);
-    TEST_SUITE_RUN(Vec);
     TEST_SUITE_RUN(Example);
+    TEST_SUITE_RUN(Vec);
+    TEST_SUITE_RUN(Map);
+    TEST_SUITE_RUN(Null_Deref);
     return 0;
 }
+
+
+

@@ -22,6 +22,11 @@
 #include <setjmp.h>
 #include <time.h>
 
+char *TEST_LOG_FILE_NAME = "testing_log.txt";
+
+#define TEST_LOG_FMT(fmt, ...) __TEST_LOG_FMT_IMPL(fmt, TEST_LOG_FILE_NAME, __VA_ARGS__)
+#define TEST_LOG(msg) __TEST_LOG_IMPL(msg, TEST_LOG_FILE_NAME)
+
 /**
  * @brief Used at the start of a test function to define the test.
  *
@@ -31,120 +36,117 @@
 
 #define TEST_PASS_VALUE 1
 
+#define TEST_FAIL_VALUE (!(TEST_PASS_VALUE))
+
 #define TEST_PASS() return TEST_PASS_VALUE
 
-#define TEST_FAIL()                                                                                                                                                 \
-    do                                                                                                                                                              \
-    {                                                                                                                                                               \
-        printf("%sFail in Suite: %s\"%s\"%s: Test %s\"%s\"%s:%s\n\tfile: %s\n\tline: %d\n",                                                                         \
-               __ANSI_RED, __ANSI_YELLOW, __current_test_suite_name, __ANSI_RED, __ANSI_YELLOW, __current_test_name, __ANSI_RED, __ANSI_RESET, __FILE__, __LINE__); \
-        return !(TEST_PASS_VALUE);                                                                                                                                  \
+#define TEST_FAIL()             \
+    do                          \
+    {                           \
+        __TEST_FAIL_TEXT();     \
+        return TEST_FAIL_VALUE; \
     } while (0)
 
 /**
  * @brief If the condition is not met, the test fails.
  *
  */
-#define TEST_ASSERT(cond)                                 \
-    do                                                    \
-    {                                                     \
-        if (!(cond))                                      \
-        {                                                 \
-            printf("%sAssertion failed:%s\n\tcond: %s\n", \
-                   __ANSI_RED, __ANSI_RESET, #cond);      \
-            TEST_FAIL();                                  \
-        }                                                 \
+#define TEST_ASSERT(cond)             \
+    do                                \
+    {                                 \
+        if (!(cond))                  \
+        {                             \
+            __TEST_ASSERT_TEXT(cond); \
+            TEST_FAIL();              \
+        }                             \
     } while (0)
 
 /**
  * @brief If the condition is not met, the test fails.
  *
  */
-#define TEST_ASSERT_FMT(cond, fmt, ...)                   \
-    do                                                    \
-    {                                                     \
-        if (!(cond))                                      \
-        {                                                 \
-            printf("%sAssertion failed:%s\n\tcond: %s\n", \
-                   __ANSI_RED, __ANSI_RESET, #cond);      \
-            printf(fmt "\n", __VA_ARGS__);                \
-            TEST_FAIL();                                  \
-        }                                                 \
+#define TEST_ASSERT_FMT(cond, fmt, ...)    \
+    do                                     \
+    {                                      \
+        if (!(cond))                       \
+        {                                  \
+            __TEST_ASSERT_TEXT(cond);      \
+            printf(fmt "\n", __VA_ARGS__); \
+            TEST_FAIL();                   \
+        }                                  \
     } while (0)
 
 /**
  * @brief If the condition is not met, the test fails.
  *
  */
-#define TEST_ASSERT_MSG(cond, MSG)                        \
-    do                                                    \
-    {                                                     \
-        if (!(cond))                                      \
-        {                                                 \
-            printf("%sAssertion failed:%s\n\tcond: %s\n", \
-                   __ANSI_RED, __ANSI_RESET, #cond);      \
-            printf(MSG "\n");                             \
-            TEST_FAIL();                                  \
-        }                                                 \
+#define TEST_ASSERT_MSG(cond, MSG)    \
+    do                                \
+    {                                 \
+        if (!(cond))                  \
+        {                             \
+            __TEST_ASSERT_TEXT(cond); \
+            printf(MSG "\n");         \
+            TEST_FAIL();              \
+        }                             \
     } while (0)
+
+#define TEST_BLOCK(...) \
+    {                   \
+        __VA_ARGS__     \
+    }
 
 /**
  * @brief Allows to run multiple statements in a block.
  *
  */
-#define TEST_CLEAN_FUNC(...) \
-    {                        \
-        __VA_ARGS__          \
-    }
+#define TEST_CLEAN_FUNC(...) TEST_BLOCK(__VA_ARGS__)
 
 /**
  * @brief If the condition is not met, the clean_func is called and the test fails.
  *
  */
-#define TEST_ASSERT_CLEAN(cond, clean_func)                                                                         \
-    do                                                                                                              \
-    {                                                                                                               \
-        if (!(cond))                                                                                                \
-        {                                                                                                           \
-            printf("%sAssertion failed:%s\n\tcond: %s\n\t%sfunc: %s%s\n\tfile: %s\n\tline: %d\n",                   \
-                   __ANSI_RED, __ANSI_RESET, #cond, __ANSI_YELLOW, __FUNCTION__, __ANSI_RESET, __FILE__, __LINE__); \
-            clean_func;                                                                                             \
-            TEST_FAIL();                                                                                            \
-        }                                                                                                           \
+#define TEST_ASSERT_CLEAN(cond, clean_func) \
+    do                                      \
+    {                                       \
+        if (!(cond))                        \
+        {                                   \
+            __TEST_ASSERT_TEXT(cond);       \
+            clean_func;                     \
+            TEST_FAIL();                    \
+        }                                   \
     } while (0)
 
 /**
  * @brief If the condition is not met, the clean_func is called and the test fails.
  *
  */
-#define TEST_ASSERT_CLEAN_FMT(cond, clean_func, fmt, ...)                                                           \
-    do                                                                                                              \
-    {                                                                                                               \
-        if (!(cond))                                                                                                \
-        {                                                                                                           \
-            printf("%sAssertion failed:%s\n\tcond: %s\n\t%sfunc: %s%s\n\tfile: %s\n\tline: %d\n",                   \
-                   __ANSI_RED, __ANSI_RESET, #cond, __ANSI_YELLOW, __FUNCTION__, __ANSI_RESET, __FILE__, __LINE__); \
-            printf(fmt "\n", __VA_ARGS__);                                                                          \
-            clean_func;                                                                                             \
-            TEST_FAIL();                                                                                            \
-        }                                                                                                           \
+#define TEST_ASSERT_CLEAN_FMT(cond, clean_func, fmt, ...) \
+    do                                                    \
+    {                                                     \
+        if (!(cond))                                      \
+        {                                                 \
+            __TEST_ASSERT_TEXT(cond);                     \
+            printf(fmt "\n", __VA_ARGS__);                \
+            clean_func;                                   \
+            TEST_FAIL();                                  \
+        }                                                 \
     } while (0)
 
 /**
  * @brief If the condition is not met, the clean_func is called and the test fails.
  *
  */
-#define TEST_ASSERT_CLEAN_MSG(cond, clean_func, msg)                                                                \
-    do                                                                                                              \
-    {                                                                                                               \
-        if (!(cond))                                                                                                \
-        {                                                                                                           \
-            printf("%sAssertion failed:%s\n\tcond: %s\n\t%sfunc: %s%s\n\tfile: %s\n\tline: %d\n",                   \
-                   __ANSI_RED, __ANSI_RESET, #cond, __ANSI_YELLOW, __FUNCTION__, __ANSI_RESET, __FILE__, __LINE__); \
-            printf(msg "\n");                                                                                       \
-            clean_func;                                                                                             \
-            TEST_FAIL();                                                                                            \
-        }                                                                                                           \
+#define TEST_ASSERT_CLEAN_MSG(cond, clean_func, msg) \
+    do                                               \
+    {                                                \
+        if (!(cond))                                 \
+        {                                            \
+            __TEST_ASSERT_TEXT(cond);                \
+            printf(msg "\n");                        \
+            clean_func;                              \
+            TEST_FAIL();                             \
+        }                                            \
     } while (0)
 
 /**
@@ -163,6 +165,24 @@
         (__suite##_suite).tests[(__suite##_suite).count].test_name = #test;                                        \
         (__suite##_suite).count++;                                                                                 \
     } while (0)
+
+#define TEST_SUITE(name, ...)              \
+    TEST_SUITE_MAKE(name)                  \
+    {                                      \
+        __current_test_suite_name = #name; \
+        int i = 22 + strlen(#name);        \
+        while (i--)                        \
+        {                                  \
+            putchar('=');                  \
+        }                                  \
+        putchar('\n');                     \
+        TEST_BLOCK(__VA_ARGS__);           \
+        TEST_SUITE_END(name);              \
+    }
+
+/*
+    If you use TEST_SUITE you dont need to use the following macros.
+*/
 
 /**
  * @brief Used to define a test suite.
@@ -187,6 +207,8 @@
     {                                         \
         __TEST_SUITE_RUN_TESTS(name##_suite); \
         free((name##_suite).tests);           \
+        __current_test_name = NULL;           \
+        __current_test_suite_name = NULL;     \
     } while (0);
 
 /**
@@ -254,6 +276,14 @@ bool __testing_does_terminal_support_ansi_color()
 #define __ANSI_BLUE (__testing_does_terminal_support_ansi_color() ? "\x1b[34m" : "")
 #define __ANSI_UNDERLINE (__testing_does_terminal_support_ansi_color() ? "\x1b[4m" : "")
 #define __ANSI_RESET (__testing_does_terminal_support_ansi_color() ? "\x1b[0m" : "")
+
+#define __TEST_FAIL_TEXT()                                                                    \
+    printf("\t%sFail in Suite: %s\"%s\"%s: Test %s\"%s\"%s:%s\n\t\tfile: %s\n\t\tline: %d\n", \
+           __ANSI_RED, __ANSI_YELLOW, __current_test_suite_name, __ANSI_RED, __ANSI_YELLOW, __current_test_name, __ANSI_RED, __ANSI_RESET, __FILE__, __LINE__);
+
+#define __TEST_ASSERT_TEXT(cond)                  \
+    printf("%sAssertion failed:%s\n\tcond: %s\n", \
+           __ANSI_RED, __ANSI_RESET, #cond)
 
 typedef struct
 {
@@ -369,51 +399,94 @@ void __TESTING_RESET_SIGNAL_HANDLERS(void)
     signal(SIGABRT, SIG_DFL);
 }
 
+#define __TEST_SUITE_RUN_TESTS_IMPL(suite)                                                                                                                           \
+    do                                                                                                                                                               \
+    {                                                                                                                                                                \
+        int i;                                                                                                                                                       \
+        printf("%s%sRunning Test Suite: %s\n%s", __ANSI_UNDERLINE, __ANSI_YELLOW, (suite).name, __ANSI_RESET);                                                       \
+        __current_test_suite_name = (char *)(suite).name;                                                                                                            \
+        int total_tests = 0, passed_tests = 0;                                                                                                                       \
+        for (i = 0; i < (suite).count; i++)                                                                                                                          \
+        {                                                                                                                                                            \
+            total_tests++;                                                                                                                                           \
+            __current_test_name = (char *)(suite).tests[i].test_name;                                                                                                \
+            clock_t start = clock();                                                                                                                                 \
+            printf("%sRunning Test: %s%s%s...\n%s", __ANSI_BLUE, __ANSI_YELLOW, __current_test_name, __ANSI_BLUE, __ANSI_RESET);                                     \
+            if (setjmp(__testing_env) == 0)                                                                                                                          \
+            {                                                                                                                                                        \
+                __signal_caught = 0;                                                                                                                                 \
+                int result = (suite).tests[i].test_func();                                                                                                           \
+                if (result == TEST_PASS_VALUE && __signal_caught == 0)                                                                                               \
+                {                                                                                                                                                    \
+                    printf("%sTest %s\"%s\"%s passed.%s\n", __ANSI_GREEN, __ANSI_YELLOW, __current_test_name, __ANSI_GREEN, __ANSI_RESET);                           \
+                    passed_tests++;                                                                                                                                  \
+                }                                                                                                                                                    \
+                else                                                                                                                                                 \
+                {                                                                                                                                                    \
+                    clock_t end = clock();                                                                                                                           \
+                    double elapsed_time = (double)(end - start) / CLOCKS_PER_SEC;                                                                                    \
+                    printf("%sTest \"%s\" failed.\n%s", __ANSI_RED, __current_test_name, __ANSI_RESET);                                                              \
+                }                                                                                                                                                    \
+            }                                                                                                                                                        \
+            else                                                                                                                                                     \
+            {                                                                                                                                                        \
+                printf("%sTest %s\"%s\"%s failed due to signal %d.%s\n", __ANSI_RED, __ANSI_YELLOW, __current_test_name, __ANSI_RED, __signal_caught, __ANSI_RESET); \
+            }                                                                                                                                                        \
+            clock_t end = clock();                                                                                                                                   \
+            double elapsed_time = (double)(end - start) / CLOCKS_PER_SEC;                                                                                            \
+            printf("\t%sElapsed time: %fs%s\n", __ANSI_YELLOW, elapsed_time, __ANSI_RESET);                                                                          \
+        }                                                                                                                                                            \
+        printf("\nTest suite %s\"%s\"%s summary:\n", __ANSI_YELLOW, (suite).name, __ANSI_RESET);                                                                     \
+        printf("%sTotal tests: %d\n%s", __ANSI_BLUE, total_tests, __ANSI_RESET);                                                                                     \
+        printf("%sPassed tests: %d\n%s", __ANSI_GREEN, passed_tests, __ANSI_RESET);                                                                                  \
+        printf("%sFailed tests: %d\n%s", __ANSI_RED, total_tests - passed_tests, __ANSI_RESET);                                                                      \
+        printf("%sPass rate: %.2f%%\n%s", __ANSI_YELLOW, (float)passed_tests / total_tests * 100, __ANSI_RESET);                                                     \
+        i = 22 + strlen((suite).name);                                                                                                                               \
+        while (i--)                                                                                                                                                  \
+        {                                                                                                                                                            \
+            putchar('=');                                                                                                                                            \
+        }                                                                                                                                                            \
+        putchar('\n');                                                                                                                                               \
+    } while (0)
+
 /**
  * @brief Expects to receive the name of the actual suite struct.
  *
  */
+#ifndef __TESTING_DECLARE_TEST_SUITE_RUN_TESTS_AS_FUNCTION
 void __TEST_SUITE_RUN_TESTS(TestSuite suite)
 {
-    printf("%s%s\nRunning Test Suite: %s\n%s", __ANSI_UNDERLINE, __ANSI_YELLOW, (suite).name, __ANSI_RESET);
-    __current_test_suite_name = (char *)(suite).name;
-    int total_tests = 0;
-    int passed_tests = 0;
-    for (int i = 0; i < (suite).count; i++)
-    {
-        total_tests++;
-        __current_test_name = (char *)(suite).tests[i].test_name;
-        clock_t start = clock();
-        printf("%sRunning Test: %s%s%s...\n%s", __ANSI_BLUE, __ANSI_YELLOW, __current_test_name, __ANSI_BLUE, __ANSI_RESET);
-        if (setjmp(__testing_env) == 0)
-        {
-            __signal_caught = 0;
-            int result = (suite).tests[i].test_func();
-            if (result == TEST_PASS_VALUE && __signal_caught == 0)
-            {
-                printf("%sTest %s\"%s\"%s passed.%s\n", __ANSI_GREEN, __ANSI_YELLOW, __current_test_name, __ANSI_GREEN, __ANSI_RESET);
-                passed_tests++;
-            }
-            else
-            {
-                clock_t end = clock();
-                double elapsed_time = (double)(end - start) / CLOCKS_PER_SEC;
-                printf("%sTest \"%s\" failed.\n%s", __ANSI_RED, __current_test_name, __ANSI_RESET);
-            }
-        }
-        else
-        {
-            printf("%sTest %s\"%s\"%s failed due to signal %d.%s\n", __ANSI_RED, __ANSI_YELLOW, __current_test_name, __ANSI_RED, __signal_caught, __ANSI_RESET);
-        }
-        clock_t end = clock();
-        double elapsed_time = (double)(end - start) / CLOCKS_PER_SEC;
-        printf("\t%sElapsed time: %.2fs%s\n", __ANSI_YELLOW, elapsed_time, __ANSI_RESET);
-    }
-    printf("\nTest suite \"%s\" summary:\n", (suite).name);
-    printf("%sTotal tests: %d\n%s", __ANSI_BLUE, total_tests, __ANSI_RESET);
-    printf("%sPassed tests: %d\n%s", __ANSI_GREEN, passed_tests, __ANSI_RESET);
-    printf("%sFailed tests: %d\n%s", __ANSI_RED, total_tests - passed_tests, __ANSI_RESET);
-    printf("%sPass rate: %.2f%%\n%s", __ANSI_YELLOW, (float)passed_tests / total_tests * 100, __ANSI_RESET);
+    __TEST_SUITE_RUN_TESTS_IMPL(suite);
 }
+#else
+#define __TEST_SUITE_RUN_TESTS(suite) __TEST_SUITE_RUN_TESTS_IMPL(suite)
+#endif
+
+#define __TEST_LOG_IMPL(fmt, filename)                                                                                                                                                    \
+    do                                                                                                                                                                                  \
+    {                                                                                                                                                                                   \
+        FILE *file = fopen(filename, "a");                                                                                                                                              \
+        bool suite = __current_test_suite_name != NULL;                                                                                                                                 \
+        bool test = __current_test_name != NULL;                                                                                                                                        \
+        if (file)                                                                                                                                                                       \
+        {                                                                                                                                                                               \
+            fprintf(file, "[LOG%s%s%s%s] " fmt "\n", suite ? "/" : "", suite ? __current_test_suite_name : "", test ? "/" : "", test ? __current_test_name : "");                       \
+            fclose(file);                                                                                                                                                               \
+        }                                                                                                                                                                               \
+        printf("%s[LOG%s%s%s%s]%s " fmt "\n", __ANSI_YELLOW, suite ? "/" : "", suite ? __current_test_suite_name : "", test ? "/" : "", test ? __current_test_name : "", __ANSI_RESET); \
+    } while (0)
+#define __TEST_LOG_FMT_IMPL(fmt, filename, ...)                                                                                                                                                        \
+    do                                                                                                                                                                                               \
+    {                                                                                                                                                                                                \
+        FILE *file = fopen(filename, "a");                                                                                                                                                           \
+        bool suite = __current_test_suite_name != NULL;                                                                                                                                              \
+        bool test = __current_test_name != NULL;                                                                                                                                                     \
+        if (file)                                                                                                                                                                                    \
+        {                                                                                                                                                                                            \
+            fprintf(file, "[LOG%s%s%s%s] " fmt "\n", suite ? "/" : "", suite ? __current_test_suite_name : "", test ? "/" : "", test ? __current_test_name : "", __VA_ARGS__);                       \
+            fclose(file);                                                                                                                                                                            \
+        }                                                                                                                                                                                            \
+        printf("%s[LOG%s%s%s%s]%s " fmt "\n", __ANSI_YELLOW, suite ? "/" : "", suite ? __current_test_suite_name : "", test ? "/" : "", test ? __current_test_name : "", __ANSI_RESET, __VA_ARGS__); \
+    } while (0)
 
 #endif /* _TESTING_FRAMEWORK_H */

@@ -82,7 +82,7 @@ char *TEST_LOG_FILE_NAME = "testing_log.txt";
 
 #define TEST_BLOCK(...) \
     {                   \
-        __VA_ARGS__;     \
+        __VA_ARGS__;    \
     }
 
 /**
@@ -124,7 +124,7 @@ char *TEST_LOG_FILE_NAME = "testing_log.txt";
 
 /**
  * @brief Creates a test suite with the given name. This is the preferred, but not required, way to create a test suite.
- * 
+ *
  * @param name Name of the test suite.
  * @param ... Code to run in the test suite, optionally enclose in semicolons. This is where you link your tests to the suite.
  */
@@ -271,13 +271,13 @@ bool __testing_does_terminal_support_ansi_color()
 #define __ANSI_UNDERLINE (__testing_does_terminal_support_ansi_color() ? "\x1b[4m" : "")
 #define __ANSI_RESET (__testing_does_terminal_support_ansi_color() ? "\x1b[0m" : "")
 
-#define __TEST_FAIL_TEXT()                                                                   \
-    printf("\t%sFail in Suite:%s\"%s\"%s, Test:%s\"%s\"%s:%s\n\t\tfile: %s\n\t\tline: %d\n", \
-           __ANSI_RED, __ANSI_YELLOW, __current_test_suite_name, __ANSI_RED, __ANSI_YELLOW, __current_test_name, __ANSI_RED, __ANSI_RESET, __FILE__, __LINE__);
+#define __TEST_FAIL_TEXT()                                                                     \
+    TEST_LOG("\n\t%sFail in Suite:%s\"%s\"%s, Test:%s\"%s\"%s:%s\n\t\tfile: %s\n\t\tline: %d", \
+             __ANSI_RED, __ANSI_YELLOW, __current_test_suite_name, __ANSI_RED, __ANSI_YELLOW, __current_test_name, __ANSI_RED, __ANSI_RESET, __FILE__, __LINE__);
 
-#define __TEST_ASSERT_TEXT(cond)                      \
-    printf("%s\tAssertion failed:%s\n\t\tcond: %s\n", \
-           __ANSI_RED, __ANSI_RESET, #cond)
+#define __TEST_ASSERT_TEXT(cond)                        \
+    TEST_LOG("\n\t%sAssertion failed:%s\n\t\tcond: %s", \
+             __ANSI_RED, __ANSI_RESET, #cond)
 
 typedef struct
 {
@@ -326,6 +326,31 @@ bool __testing_ask_user()
 void __TESTING_REGISTER_SIGNAL_HANDLERS(void);
 void __TESTING_RESET_SIGNAL_HANDLERS(void);
 
+/**
+ * @brief Takes a filename rather than FILE* because we expect a critial error to occur and always want to ensure that the log is written.
+ *
+ */
+#define __TEST_LOG_IMPL(filename, ...)                                                                                                                                         \
+    do                                                                                                                                                                         \
+    {                                                                                                                                                                          \
+        FILE *file = fopen(filename, "a");                                                                                                                                     \
+        bool suite = __current_test_suite_name != NULL;                                                                                                                        \
+        bool test = __current_test_name != NULL;                                                                                                                               \
+        bool old_use_colors = __testing_try_use_colors;                                                                                                                        \
+        __testing_try_use_colors = false;                                                                                                                                      \
+        if (file)                                                                                                                                                              \
+        {                                                                                                                                                                      \
+            fprintf(file, "[LOG%s%s%s%s] ", suite ? "/" : "", suite ? __current_test_suite_name : "", test ? "/" : "", test ? __current_test_name : "");                       \
+            fprintf(file, __VA_ARGS__);                                                                                                                                        \
+            fputc('\n', file);                                                                                                                                                 \
+            fclose(file);                                                                                                                                                      \
+        }                                                                                                                                                                      \
+        __testing_try_use_colors = old_use_colors;                                                                                                                             \
+        printf("%s[LOG%s%s%s%s]%s ", __ANSI_YELLOW, suite ? "/" : "", suite ? __current_test_suite_name : "", test ? "/" : "", test ? __current_test_name : "", __ANSI_RESET); \
+        printf(__VA_ARGS__);                                                                                                                                                   \
+        putchar('\n');                                                                                                                                                         \
+    } while (0)
+
 /* Signal handling functions */
 void __testing_handle_signal(int sig)
 {
@@ -347,17 +372,19 @@ void __testing_handle_signal(int sig)
     default:
         signal_name = "Unknown signal";
     }
+    const size_t max_buff_size = 1000;
+    char buff[1000];
 
-    printf("\n%sCaught signal: %s (%d)%s\n", __ANSI_RED, signal_name, sig, __ANSI_RESET);
+    snprintf(buff, max_buff_size, "\n\tCaught signal: %s (%d)\n", signal_name, sig);
     if (__current_test_name != NULL)
     {
-        printf("%sError occurred during test: %s\n%s", __ANSI_RED, __current_test_name, __ANSI_RESET);
+        snprintf(buff, max_buff_size, "%s\tError occurred during test: %s\n", buff, __current_test_name);
     }
     if (__current_test_suite_name != NULL)
     {
-        printf("%sIn test suite: %s\n%s", __ANSI_RED, __current_test_suite_name, __ANSI_RESET);
+        snprintf(buff, max_buff_size, "%s\tIn test suite: %s", buff, __current_test_suite_name);
     }
-
+    TEST_LOG("%s%s%s", __ANSI_RED, buff, __ANSI_RESET);
     /*  Reset signal handlers to default */
     __TESTING_RESET_SIGNAL_HANDLERS();
 
@@ -430,11 +457,13 @@ void __TESTING_RESET_SIGNAL_HANDLERS(void)
             double elapsed_time = (double)(end - start) / CLOCKS_PER_SEC;                                                                                            \
             printf("\t%sElapsed time: %fs%s\n", __ANSI_YELLOW, elapsed_time, __ANSI_RESET);                                                                          \
         }                                                                                                                                                            \
-        printf("\nTest suite %s\"%s\"%s summary:\n", __ANSI_YELLOW, (suite).name, __ANSI_RESET);                                                                     \
-        printf("%sTotal tests: %d\n%s", __ANSI_BLUE, total_tests, __ANSI_RESET);                                                                                     \
-        printf("%sPassed tests: %d\n%s", __ANSI_GREEN, passed_tests, __ANSI_RESET);                                                                                  \
-        printf("%sFailed tests: %d\n%s", __ANSI_RED, total_tests - passed_tests, __ANSI_RESET);                                                                      \
-        printf("%sPass rate: %.2f%%\n%s", __ANSI_YELLOW, (float)passed_tests / total_tests * 100, __ANSI_RESET);                                                     \
+        __current_test_name = NULL;                                                                                                                                  \
+        TEST_LOG("\nTest suite %s\"%s\"%s summary:\n%sTotal tests: %d\n%sPassed tests: %d\n%sFailed tests: %d\n%sPass rate: %.2f%%%s",                               \
+                 __ANSI_YELLOW, __current_test_suite_name, __ANSI_RESET,                                                                                             \
+                 __ANSI_BLUE, total_tests,                                                                                                                           \
+                 __ANSI_GREEN, passed_tests,                                                                                                                         \
+                 __ANSI_RED, total_tests - passed_tests,                                                                                                             \
+                 __ANSI_YELLOW, (float)passed_tests / total_tests * 100, __ANSI_RESET);                                                                              \
         i = 22 + strlen((suite).name);                                                                                                                               \
         while (i--)                                                                                                                                                  \
         {                                                                                                                                                            \
@@ -457,27 +486,5 @@ void __TEST_SUITE_RUN_TESTS(TestSuite suite)
 #else
 #define __TEST_SUITE_RUN_TESTS(suite) __TEST_SUITE_RUN_TESTS_IMPL(suite)
 #endif
-
-/**
- * @brief Takes a filename rather than FILE* because we expect a critial error to occur and always want to ensure that the log is written.
- *
- */
-#define __TEST_LOG_IMPL(filename, ...)                                                                                                                                         \
-    do                                                                                                                                                                         \
-    {                                                                                                                                                                          \
-        FILE *file = fopen(filename, "a");                                                                                                                                     \
-        bool suite = __current_test_suite_name != NULL;                                                                                                                        \
-        bool test = __current_test_name != NULL;                                                                                                                               \
-        if (file)                                                                                                                                                              \
-        {                                                                                                                                                                      \
-            fprintf(file, "[LOG%s%s%s%s] ", suite ? "/" : "", suite ? __current_test_suite_name : "", test ? "/" : "", test ? __current_test_name : "");                       \
-            fprintf(file, __VA_ARGS__);                                                                                                                                        \
-            fputc('\n', file);                                                                                                                                                 \
-            fclose(file);                                                                                                                                                      \
-        }                                                                                                                                                                      \
-        printf("%s[LOG%s%s%s%s]%s ", __ANSI_YELLOW, suite ? "/" : "", suite ? __current_test_suite_name : "", test ? "/" : "", test ? __current_test_name : "", __ANSI_RESET); \
-        printf(__VA_ARGS__);                                                                                                                                                   \
-        putchar('\n');                                                                                                                                                         \
-    } while (0)
 
 #endif /* _TESTING_FRAMEWORK_H */

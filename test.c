@@ -130,7 +130,6 @@ TEST_SUITE(
 
 int main()
 {
-    __testing_try_use_colors = 0;
     /* __testing_handle_signal_ask_user = 1; */
     TEST_LOG("Running tests...");
     TEST_SUITE_RUN(Example);

@@ -25,6 +25,7 @@
 
 /* Use anywhere to log to CTF_LOG_FILE_NAME */
 #define CTF_LOG(...) __CTF_LOG_IMPL(CTF_LOG_FILE_NAME, __VA_ARGS__)
+#define CTF_LOG_TIME() __CTF_LOG_TIME_IMPL()
 /* Macro to a char* */
 #define CTF_LOG_FILE_NAME __CTF_LOG_FILE_NAME
 /* Use to declare a test */
@@ -55,8 +56,10 @@
 #define CTF_PASS_VALUE __CTF_PASS_VALUE
 #define CTF_FAIL_VALUE __CTF_FAIL_VALUE
 
+#ifdef CTF_TEST_NAMES
 /* Use anywhere to log to CTF_LOG_FILE_NAME */
 #define TEST_LOG(...) __CTF_LOG_IMPL(CTF_LOG_FILE_NAME, __VA_ARGS__)
+#define TEST_LOG_TIME() __CTF_LOG_TIME_IMPL()
 /* Macro to a char* */
 #define TEST_LOG_FILE_NAME __CTF_LOG_FILE_NAME
 /* Use to declare a test */
@@ -86,6 +89,7 @@
 #define TEST_LOG_TIME() __CTF_LOG_TIME_IMPL()
 #define TEST_PASS_VALUE __CTF_PASS_VALUE
 #define TEST_FAIL_VALUE __CTF_FAIL_VALUE
+#endif
 
 
 char *__CTF_LOG_FILE_NAME = "testing.log";
@@ -108,7 +112,7 @@ char *__CTF_LOG_FILE_NAME = "testing.log";
 
 #define __CTF_PASS_VALUE 1
 
-#define __CTF_FAIL_VALUE (!(TEST_PASS_VALUE))
+#define __CTF_FAIL_VALUE (!(__CTF_PASS_VALUE))
 
 #define __CTF_PASS() return __CTF_PASS_VALUE
 
@@ -259,7 +263,7 @@ typedef struct
     int count;
     int capacity;
     const char *name;
-} __CTF_TestSuite;
+} __CTF_Test_Suite;
 
 char *__ctf_current_test_suite_name = NULL;
 char *__ctf_current_test_name = NULL;
@@ -504,7 +508,7 @@ void __CTF_HANDLE_SIGNAL(int sig)
  *
  */
 #ifndef CTF_DECLARE_TEST_SUITE_RUN_TESTS_AS_FUNCTION
-void __CTF_SUITE_RUN_TESTS(__CTF_TestSuite suite)
+void __CTF_SUITE_RUN_TESTS(__CTF_Test_Suite suite)
 {
     __CTF_SUITE_RUN_TESTS_IMPL(suite);
 }
@@ -526,12 +530,12 @@ void __CTF_PROCESS_EXIT_IMPL(void)
     exit(0);
 }
 
-void __CTF_SUITE_LINK_FUNC(__CTF_TestSuite *suite, int (*test_func)(), const char *test_name)
+void __CTF_SUITE_LINK_FUNC(__CTF_Test_Suite *suite, int (*test_func)(), const char *test_name)
 {
     if (suite->count >= suite->capacity)
     {
         suite->capacity = suite->capacity == 0 ? 1 : suite->capacity * 2;
-        suite->tests = realloc(suite->tests, suite->capacity * sizeof(__CTF_Test));
+        suite->tests = (__CTF_Test*)realloc(suite->tests, suite->capacity * sizeof(__CTF_Test));
     }
     suite->tests[suite->count].test_func = test_func;
     suite->tests[suite->count].test_name = test_name;
@@ -580,7 +584,7 @@ void __CTF_SUITE_LINK_FUNC(__CTF_TestSuite *suite, int (*test_func)(), const cha
     } while (0)
 
 #define __CTF_SUITE_MAKE_IMPL(__name)  \
-    __CTF_TestSuite __name##_suite = { \
+    __CTF_Test_Suite __name##_suite = { \
         .tests = NULL,                 \
         .count = 0,                    \
         .capacity = 0,                 \

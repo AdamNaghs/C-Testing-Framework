@@ -1,4 +1,5 @@
-#include "testing.h"
+#define CTF_TEST_NAMES
+#include "ctf.h"
 #include <stdlib.h>
 
 /* Define tests */

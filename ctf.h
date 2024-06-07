@@ -512,7 +512,7 @@ void __CTF_HANDLE_SIGNAL(int sig)
  * @note only declare if your test suite is polluted with local/global variable names.
  *
  */
-#ifndef CTF_DECLARE_TEST_SUITE_RUN_TESTS_AS_FUNCTION
+#ifndef CTF_SUITE_RUN_TEST_MACRO_ONLY
 void __CTF_SUITE_RUN_TESTS(__CTF_Test_Suite suite)
 {
     __CTF_SUITE_RUN_TESTS_IMPL(suite);

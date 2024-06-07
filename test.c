@@ -106,23 +106,35 @@ TEST_SUITE_MAKE(Map)
 
 TEST_MAKE(Null_Deref)
 {
+    TEST_LOG("This test should segfault");
     volatile int *ptr = NULL;
     int i = *ptr;
     TEST_PASS();
 }
 
-TEST_SUITE_MAKE(Intentional_Fail)
+TEST_MAKE(Bad_Assert)
 {
-    TEST_SUITE_LINK(Intentional_Fail, Null_Deref);
-    TEST_SUITE_END(Intentional_Fail);
+    TEST_ASSERT(1 == 0);
+    TEST_PASS();
 }
+
+/* Alternate way of declaring a test suite. This way you just need to link the tests to the suite. */
+TEST_SUITE(
+    Intentional_Fail,
+    {
+        TEST_LOG("Tests in this suite are expected to fail");
+        TEST_SUITE_LINK(Intentional_Fail, Null_Deref);
+        TEST_SUITE_LINK(Intentional_Fail, Bad_Assert);
+    })
 
 int main()
 {
     /* __testing_handle_signal_ask_user = 1; */
+    TEST_LOG("Running tests...");
     TEST_SUITE_RUN(Example);
     TEST_SUITE_RUN(Vec);
     TEST_SUITE_RUN(Map);
+    TEST_LOG("The following suite should fail");
     TEST_SUITE_RUN(Intentional_Fail);
     return 0;
 }

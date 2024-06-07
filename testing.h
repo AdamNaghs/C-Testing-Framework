@@ -24,8 +24,7 @@
 
 char *TEST_LOG_FILE_NAME = "testing_log.txt";
 
-#define TEST_LOG_FMT(fmt, ...) __TEST_LOG_FMT_IMPL(fmt, TEST_LOG_FILE_NAME, __VA_ARGS__)
-#define TEST_LOG(msg) __TEST_LOG_IMPL(msg, TEST_LOG_FILE_NAME)
+#define TEST_LOG(...) __TEST_LOG_IMPL(TEST_LOG_FILE_NAME, __VA_ARGS__)
 
 /**
  * @brief Used at the start of a test function to define the test.
@@ -65,28 +64,13 @@ char *TEST_LOG_FILE_NAME = "testing_log.txt";
  * @brief If the condition is not met, the test fails.
  *
  */
-#define TEST_ASSERT_FMT(cond, fmt, ...)    \
-    do                                     \
-    {                                      \
-        if (!(cond))                       \
-        {                                  \
-            __TEST_ASSERT_TEXT(cond);      \
-            printf(fmt "\n", __VA_ARGS__); \
-            TEST_FAIL();                   \
-        }                                  \
-    } while (0)
-
-/**
- * @brief If the condition is not met, the test fails.
- *
- */
-#define TEST_ASSERT_MSG(cond, MSG)    \
+#define TEST_ASSERT_LOG(cond, ...)    \
     do                                \
     {                                 \
         if (!(cond))                  \
         {                             \
             __TEST_ASSERT_TEXT(cond); \
-            printf(MSG "\n");         \
+            TEST_LOG(__VA_ARGS__);      \
             TEST_FAIL();              \
         }                             \
     } while (0)
@@ -121,29 +105,13 @@ char *TEST_LOG_FILE_NAME = "testing_log.txt";
  * @brief If the condition is not met, the clean_func is called and the test fails.
  *
  */
-#define TEST_ASSERT_CLEAN_FMT(cond, clean_func, fmt, ...) \
-    do                                                    \
-    {                                                     \
-        if (!(cond))                                      \
-        {                                                 \
-            __TEST_ASSERT_TEXT(cond);                     \
-            printf(fmt "\n", __VA_ARGS__);                \
-            clean_func;                                   \
-            TEST_FAIL();                                  \
-        }                                                 \
-    } while (0)
-
-/**
- * @brief If the condition is not met, the clean_func is called and the test fails.
- *
- */
-#define TEST_ASSERT_CLEAN_MSG(cond, clean_func, msg) \
+#define TEST_ASSERT_CLEAN_LOG(cond, clean_func, ...) \
     do                                               \
     {                                                \
         if (!(cond))                                 \
         {                                            \
             __TEST_ASSERT_TEXT(cond);                \
-            printf(msg "\n");                        \
+            TEST_LOG(__VA_ARGS__);                     \
             clean_func;                              \
             TEST_FAIL();                             \
         }                                            \
@@ -462,31 +430,22 @@ void __TEST_SUITE_RUN_TESTS(TestSuite suite)
 #define __TEST_SUITE_RUN_TESTS(suite) __TEST_SUITE_RUN_TESTS_IMPL(suite)
 #endif
 
-#define __TEST_LOG_IMPL(fmt, filename)                                                                                                                                                    \
-    do                                                                                                                                                                                  \
-    {                                                                                                                                                                                   \
-        FILE *file = fopen(filename, "a");                                                                                                                                              \
-        bool suite = __current_test_suite_name != NULL;                                                                                                                                 \
-        bool test = __current_test_name != NULL;                                                                                                                                        \
-        if (file)                                                                                                                                                                       \
-        {                                                                                                                                                                               \
-            fprintf(file, "[LOG%s%s%s%s] " fmt "\n", suite ? "/" : "", suite ? __current_test_suite_name : "", test ? "/" : "", test ? __current_test_name : "");                       \
-            fclose(file);                                                                                                                                                               \
-        }                                                                                                                                                                               \
-        printf("%s[LOG%s%s%s%s]%s " fmt "\n", __ANSI_YELLOW, suite ? "/" : "", suite ? __current_test_suite_name : "", test ? "/" : "", test ? __current_test_name : "", __ANSI_RESET); \
-    } while (0)
-#define __TEST_LOG_FMT_IMPL(fmt, filename, ...)                                                                                                                                                        \
-    do                                                                                                                                                                                               \
-    {                                                                                                                                                                                                \
-        FILE *file = fopen(filename, "a");                                                                                                                                                           \
-        bool suite = __current_test_suite_name != NULL;                                                                                                                                              \
-        bool test = __current_test_name != NULL;                                                                                                                                                     \
-        if (file)                                                                                                                                                                                    \
-        {                                                                                                                                                                                            \
-            fprintf(file, "[LOG%s%s%s%s] " fmt "\n", suite ? "/" : "", suite ? __current_test_suite_name : "", test ? "/" : "", test ? __current_test_name : "", __VA_ARGS__);                       \
-            fclose(file);                                                                                                                                                                            \
-        }                                                                                                                                                                                            \
-        printf("%s[LOG%s%s%s%s]%s " fmt "\n", __ANSI_YELLOW, suite ? "/" : "", suite ? __current_test_suite_name : "", test ? "/" : "", test ? __current_test_name : "", __ANSI_RESET, __VA_ARGS__); \
+#define __TEST_LOG_IMPL(filename, ...)                                                                                                                                         \
+    do                                                                                                                                                                         \
+    {                                                                                                                                                                          \
+        FILE *file = fopen(filename, "a");                                                                                                                                     \
+        bool suite = __current_test_suite_name != NULL;                                                                                                                        \
+        bool test = __current_test_name != NULL;                                                                                                                               \
+        if (file)                                                                                                                                                              \
+        {                                                                                                                                                                      \
+            fprintf(file, "[LOG%s%s%s%s] ", suite ? "/" : "", suite ? __current_test_suite_name : "", test ? "/" : "", test ? __current_test_name : "");                       \
+            fprintf(file, __VA_ARGS__);                                                                                                                                        \
+            fputc('\n', file);                                                                                                                                                 \
+            fclose(file);                                                                                                                                                      \
+        }                                                                                                                                                                      \
+        printf("%s[LOG%s%s%s%s]%s ", __ANSI_YELLOW, suite ? "/" : "", suite ? __current_test_suite_name : "", test ? "/" : "", test ? __current_test_name : "", __ANSI_RESET); \
+        printf(__VA_ARGS__);                                                                                                                                                   \
+        putchar('\n');                                                                                                                                                         \
     } while (0)
 
 #endif /* _TESTING_FRAMEWORK_H */

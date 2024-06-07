@@ -23,7 +23,7 @@
 #include <time.h>
 #include <string.h>
 
-char *TEST_LOG_FILE_NAME = "testing_log.txt";
+char *TEST_LOG_FILE_NAME = "testing.log";
 
 /**
  * @brief Takes the same input as printf. The user does not need newlines at the end of their format strings or messages.
@@ -198,13 +198,17 @@ char *TEST_LOG_FILE_NAME = "testing_log.txt";
  * @brief Used to end a test suite.
  *
  */
-#define TEST_SUITE_END(name)                  \
-    do                                        \
-    {                                         \
-        __TEST_SUITE_RUN_TESTS(name##_suite); \
-        free((name##_suite).tests);           \
-        __current_test_name = NULL;           \
-        __current_test_suite_name = NULL;     \
+#define TEST_SUITE_END(name)                                                                                          \
+    do                                                                                                                \
+    {                                                                                                                 \
+        clock_t test_start_time = clock();                                                                            \
+        __TEST_SUITE_RUN_TESTS(name##_suite);                                                                         \
+        clock_t test_runtime = clock() - test_start_time;                                                             \
+        float test_runtime_sec = (double)(test_runtime) / CLOCKS_PER_SEC;                                             \
+        TEST_LOG("\nTest suite %s\"%s\"%s tests ran for %fs.", __ANSI_YELLOW, #name, __ANSI_RESET, test_runtime_sec); \
+        free((name##_suite).tests);                                                                                   \
+        __current_test_name = NULL;                                                                                   \
+        __current_test_suite_name = NULL;                                                                             \
     } while (0);
 
 /* All that follows is used internally. */
@@ -293,6 +297,8 @@ volatile sig_atomic_t __signal_caught = 0;
 
 FILE *__testing_log_file = NULL;
 
+clock_t __testing_process_start_time = -1;
+
 /**
  * @brief Set to true to ask the user if they want to continue testing after a signal is caught.
  *
@@ -322,8 +328,8 @@ void __TESTING_RESET_SIGNAL_HANDLERS(void);
 
 /**
  * @brief Takes a filename rather than FILE* because we expect a critial error to occur and always want to ensure that the log is written.
- * 
- * @note If TEST_PROCESS_INIT was called then we will use already opened __testing_log_file. This enables faster logging. 
+ *
+ * @note If TEST_PROCESS_INIT was called then we will use already opened __testing_log_file. This enables faster logging.
  *
  */
 #define __TEST_LOG_IMPL(filename, ...)                                                                                                                                         \
@@ -462,12 +468,6 @@ void __TESTING_RESET_SIGNAL_HANDLERS(void)
                  __ANSI_GREEN, passed_tests,                                                                                                                         \
                  __ANSI_RED, total_tests - passed_tests,                                                                                                             \
                  __ANSI_YELLOW, (float)passed_tests / total_tests * 100, __ANSI_RESET);                                                                              \
-        i = 22 + strlen((suite).name);                                                                                                                               \
-        while (i--)                                                                                                                                                  \
-        {                                                                                                                                                            \
-            putchar('=');                                                                                                                                            \
-        }                                                                                                                                                            \
-        putchar('\n');                                                                                                                                               \
     } while (0)
 
 /**
@@ -493,26 +493,33 @@ void __TEST_PROCESS_INIT_IMPL(int argc, char **argv)
         if (strcmp(argv[i], "-nc") == 0 || strcmp(argv[i], "-no-color") == 0)
         {
             __testing_try_use_colors = false;
-            continue;
         }
-
-        if (strcmp(argv[i], "-as") == 0 || strcmp(argv[i], "--ask-signal") == 0)
+        else if (strcmp(argv[i], "-as") == 0 || strcmp(argv[i], "--ask-signal") == 0)
         {
             __testing_handle_signal_ask_user = true;
         }
-
-        if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0)
+        else if (strcmp(argv[i], "-l") == 0 || strcmp(argv[i], "--log") == 0)
+        {
+            if (i + 1 < argc)
+            {
+                TEST_LOG_FILE_NAME = argv[i + 1];
+                i++;
+            }
+        }
+        else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0)
         {
             printf("Usage: %s [-nc|-no-color] [-h|-help]\n", argv[0]);
             printf("Options:\n");
             printf("\t-nc, -no-color\t\tDisable colored output.\n");
             printf("\t-as, --ask-signal\tAsk the user if they want to continue testing after a signal is caught.\n");
+            printf("\t-l, --log\t\tSpecify a log file name.\n");
             printf("\t-h, -help\t\tShow this help message.\n");
             exit(0);
         }
     }
     __current_test_name = NULL;
     __current_test_suite_name = NULL;
+    __testing_process_start_time = clock();
     __testing_log_file = fopen(TEST_LOG_FILE_NAME, "w");
     TEST_LOG("C Testing framework (CTF) initialized.");
     TEST_LOG_TIME();
@@ -520,11 +527,15 @@ void __TEST_PROCESS_INIT_IMPL(int argc, char **argv)
 
 void __TEST_PROCESS_EXIT_IMPL(void)
 {
+    TEST_LOG("Testing complete. %d suites ran.", __testing_suites_ran);
+    clock_t end_time = clock();
+    float runtime = (double)(end_time - __testing_process_start_time) / CLOCKS_PER_SEC;
+    TEST_LOG("Testing process completed in %fs.", __testing_process_start_time != -1 ? runtime : -1.0f);
     if (__testing_log_file)
     {
         fclose(__testing_log_file);
+        __testing_log_file = NULL;
     }
-    TEST_LOG("Testing complete. %d suites ran.", __testing_suites_ran);
     exit(0);
 }
 
@@ -540,27 +551,25 @@ void __TEST_SUITE_LINK_FUNC(TestSuite *suite, int (*test_func)(), const char *te
     suite->count++;
 }
 
-#define __TEST_SUITE_IMPL(name, ...)                                                                                    \
-    TEST_SUITE_MAKE(name)                                                                                               \
-    {                                                                                                                   \
-        clock_t suite_start_time = clock();                                                                             \
-        __current_test_suite_name = #name;                                                                              \
-        int i = 22 + strlen(#name);                                                                                     \
-        while (i--)                                                                                                     \
-        {                                                                                                               \
-            putchar('=');                                                                                               \
-        }                                                                                                               \
-        putchar('\n');                                                                                                  \
-        TEST_LOG_TIME();                                                                                                \
-        TEST_BLOCK(__VA_ARGS__);                                                                                        \
-        clock_t test_start_time = clock();                                                                              \
-        TEST_SUITE_END(name);                                                                                           \
-        clock_t end_time = clock();                                                                                     \
-        clock_t suite_runtime = end_time - suite_start_time;                                                            \
-        clock_t test_runtime = end_time - test_start_time;                                                              \
-        float suite_runtime_sec = (double)(suite_runtime) / CLOCKS_PER_SEC;                                             \
-        float test_runtime_sec = (double)(test_runtime) / CLOCKS_PER_SEC;                                               \
-        TEST_LOG("Suite \"%s\" completed in %fs, tests completed in %fs.", #name, suite_runtime_sec, test_runtime_sec); \
+#define __TEST_SUITE_IMPL(name, ...)       \
+    TEST_SUITE_MAKE(name)                  \
+    {                                      \
+        __current_test_suite_name = #name; \
+        int i = 22 + strlen(#name), j = i; \
+        while (i--)                        \
+        {                                  \
+            putchar('+');                  \
+        }                                  \
+        putchar('\n');                     \
+        TEST_LOG_TIME();                   \
+        TEST_BLOCK(__VA_ARGS__);           \
+        TEST_SUITE_END(name);              \
+        i = j;                             \
+        while (i--)                        \
+        {                                  \
+            putchar('-');                  \
+        }                                  \
+        putchar('\n');                     \
     }
 
 #endif /* _TESTING_FRAMEWORK_H */

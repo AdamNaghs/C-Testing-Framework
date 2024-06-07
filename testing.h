@@ -3,10 +3,10 @@
 
 /**
  * @file testing.h
- * @author your name (you@domain.com)
+ * @author Adam Naghavi
  * @brief Single header testing framework for C.
  * @version 0.2
- * @date 2024-06-06
+ * @date 2024-06-07
  *
  * @copyright Copyright (c) 2024
  *

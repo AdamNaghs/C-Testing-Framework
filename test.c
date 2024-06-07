@@ -17,6 +17,7 @@ TEST_MAKE(test_fail)
     TEST_FAIL();
 }
 
+/* This is one way of defining a test suite. */
 TEST_SUITE_MAKE(Example)
 {
     TEST_SUITE_LINK(Example, test_example);
@@ -39,12 +40,10 @@ TEST_MAKE(Vector_Test)
     vec_free(int_vec);
     TEST_PASS();
 }
-
-TEST_SUITE_MAKE(Vec)
-{
-    TEST_SUITE_LINK(Vec, Vector_Test);
-    TEST_SUITE_END(Vec);
-}
+/* This is another way of defining a test suite, which just also logs the time and some extra info
+    If you only have one test you dont need semi colons, otherwise you do.
+*/
+TEST_SUITE(Vec,TEST_SUITE_LINK(Vec, Vector_Test))
 
 #include "../Map/map.h"
 #include "../Map/map.c"
@@ -97,12 +96,13 @@ TEST_MAKE(Map_Malloc_Test)
     TEST_PASS();
 }
 
-TEST_SUITE_MAKE(Map)
-{
-    TEST_SUITE_LINK(Map, Map_Test);
-    TEST_SUITE_LINK(Map, Map_Malloc_Test);
-    TEST_SUITE_END(Map);
-}
+/* The second arg of TEST_SUITE can be ran like a closure so you can do anything you want on top of linking tests. */
+TEST_SUITE(
+    Map,
+    {
+        TEST_SUITE_LINK(Map, Map_Test);
+        TEST_SUITE_LINK(Map, Map_Malloc_Test);
+    })
 
 TEST_MAKE(Null_Deref)
 {
@@ -126,9 +126,11 @@ TEST_SUITE(
         TEST_SUITE_LINK(Intentional_Fail, Null_Deref);
         TEST_SUITE_LINK(Intentional_Fail, Bad_Assert);
     })
+#include <time.h>
 
 int main()
 {
+    __testing_try_use_colors = 0;
     /* __testing_handle_signal_ask_user = 1; */
     TEST_LOG("Running tests...");
     TEST_SUITE_RUN(Example);

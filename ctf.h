@@ -56,6 +56,12 @@
 #define CTF_PASS_VALUE __CTF_PASS_VALUE
 #define CTF_FAIL_VALUE __CTF_FAIL_VALUE
 
+/*
+    ====================================================================================================
+                    Optionally define CTF_TEST_NAMES to use the following macros also.
+    ====================================================================================================
+*/
+
 #ifdef CTF_TEST_NAMES
 /* Use anywhere to log to CTF_LOG_FILE_NAME */
 #define TEST_LOG(...) __CTF_LOG_IMPL(CTF_LOG_FILE_NAME, __VA_ARGS__)

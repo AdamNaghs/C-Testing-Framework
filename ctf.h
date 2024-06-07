@@ -217,7 +217,7 @@ char *__CTF_LOG_FILE_NAME = "testing.log";
  * @brief Used inside of a test suite to link a test to the suite.
  *
  */
-#define __CTF_SUITE_LINK(__suite, test) __CTF_SUITE_LINK_FUNC(&__suite##_suite, test##_func, #test)
+#define __CTF_SUITE_LINK(__suite, test) __CTF_SUITE_LINK_IMPL(&__suite##_suite, test##_func, #test)
 
 /**
  * @brief Call this macro to run a test suite.
@@ -535,7 +535,7 @@ void __CTF_PROCESS_EXIT_IMPL(void)
     exit(0);
 }
 
-void __CTF_SUITE_LINK_FUNC(__CTF_Test_Suite *suite, int (*test_func)(), const char *test_name)
+void __CTF_SUITE_LINK_IMPL(__CTF_Test_Suite *suite, int (*test_func)(), const char *test_name)
 {
     if (suite->count >= suite->capacity)
     {

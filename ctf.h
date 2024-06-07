@@ -91,7 +91,6 @@
 #define TEST_FAIL_VALUE __CTF_FAIL_VALUE
 #endif
 
-
 char *__CTF_LOG_FILE_NAME = "testing.log";
 
 /**
@@ -117,9 +116,9 @@ char *__CTF_LOG_FILE_NAME = "testing.log";
 #define __CTF_PASS() return __CTF_PASS_VALUE
 
 #define __CTF_FAIL()             \
-    do                          \
-    {                           \
-        __CTF_FAIL_TEXT();      \
+    do                           \
+    {                            \
+        __CTF_FAIL_TEXT();       \
         return __CTF_FAIL_VALUE; \
     } while (0)
 
@@ -127,13 +126,13 @@ char *__CTF_LOG_FILE_NAME = "testing.log";
  * @brief If the condition is not met, the test fails.
  *
  */
-#define __CTF_ASSERT(cond)            \
+#define __CTF_ASSERT(cond)           \
     do                               \
     {                                \
         if (!(cond))                 \
         {                            \
             __CTF_ASSERT_TEXT(cond); \
-            __CTF_FAIL();             \
+            __CTF_FAIL();            \
         }                            \
     } while (0)
 
@@ -141,20 +140,20 @@ char *__CTF_LOG_FILE_NAME = "testing.log";
  * @brief If the condition is not met, the test fails.
  *
  */
-#define __CTF_ASSERT_LOG(cond, ...)   \
+#define __CTF_ASSERT_LOG(cond, ...)  \
     do                               \
     {                                \
         if (!(cond))                 \
         {                            \
             __CTF_ASSERT_TEXT(cond); \
-            __CTF_LOG(__VA_ARGS__);   \
-            __CTF_FAIL();             \
+            __CTF_LOG(__VA_ARGS__);  \
+            __CTF_FAIL();            \
         }                            \
     } while (0)
 
 #define __CTF_BLOCK(...) \
-    {                   \
-        __VA_ARGS__;    \
+    {                    \
+        __VA_ARGS__;     \
     }
 
 /**
@@ -172,14 +171,14 @@ char *__CTF_LOG_FILE_NAME = "testing.log";
  *
  */
 #define __CTF_ASSERT_CLEAN(cond, ...) \
-    do                               \
-    {                                \
-        if (!(cond))                 \
-        {                            \
-            __CTF_ASSERT_TEXT(cond); \
-            __VA_ARGS__;             \
+    do                                \
+    {                                 \
+        if (!(cond))                  \
+        {                             \
+            __CTF_ASSERT_TEXT(cond);  \
+            __VA_ARGS__;              \
             __CTF_FAIL();             \
-        }                            \
+        }                             \
     } while (0)
 
 /**
@@ -189,15 +188,15 @@ char *__CTF_LOG_FILE_NAME = "testing.log";
  *
  */
 #define __CTF_ASSERT_CLEAN_LOG(cond, clean_func, ...) \
-    do                                               \
-    {                                                \
-        if (!(cond))                                 \
-        {                                            \
-            __CTF_ASSERT_TEXT(cond);                 \
+    do                                                \
+    {                                                 \
+        if (!(cond))                                  \
+        {                                             \
+            __CTF_ASSERT_TEXT(cond);                  \
             __CTF_LOG(__VA_ARGS__);                   \
-            clean_func;                              \
+            clean_func;                               \
             __CTF_FAIL();                             \
-        }                                            \
+        }                                             \
     } while (0)
 
 /**
@@ -330,13 +329,13 @@ bool __CTF_ANSI_SUPPORT()
 #define __CTF_ANSI_UNDERLINE (__CTF_ANSI_SUPPORT() ? "\x1b[4m" : "")
 #define __CTF_ANSI_RESET (__CTF_ANSI_SUPPORT() ? "\x1b[0m" : "")
 
-#define __CTF_FAIL_TEXT()                                                                      \
+#define __CTF_FAIL_TEXT()                                                                       \
     __CTF_LOG("\n\t%sFail in Suite:%s\"%s\"%s, Test:%s\"%s\"%s:%s\n\t\tfile: %s\n\t\tline: %d", \
-             __CTF_ANSI_RED, __CTF_ANSI_YELLOW, __ctf_current_test_suite_name, __CTF_ANSI_RED, __CTF_ANSI_YELLOW, __ctf_current_test_name, __CTF_ANSI_RED, __CTF_ANSI_RESET, __FILE__, __LINE__);
+              __CTF_ANSI_RED, __CTF_ANSI_YELLOW, __ctf_current_test_suite_name, __CTF_ANSI_RED, __CTF_ANSI_YELLOW, __ctf_current_test_name, __CTF_ANSI_RED, __CTF_ANSI_RESET, __FILE__, __LINE__);
 
-#define __CTF_ASSERT_TEXT(cond)                         \
+#define __CTF_ASSERT_TEXT(cond)                          \
     __CTF_LOG("\n\t%sAssertion failed:%s\n\t\tcond: %s", \
-             __CTF_ANSI_RED, __CTF_ANSI_RESET, #cond)
+              __CTF_ANSI_RED, __CTF_ANSI_RESET, #cond)
 
 bool __CTF_ASK_USER()
 {
@@ -364,23 +363,23 @@ bool __CTF_ASK_USER()
 #define __CTF_LOG_IMPL(filename, ...)                                                                                                                                                          \
     do                                                                                                                                                                                         \
     {                                                                                                                                                                                          \
-        bool suite = __ctf_current_test_suite_name != NULL;                                                                                                                                \
-        bool test = __ctf_current_test_name != NULL;                                                                                                                                       \
+        bool suite = __ctf_current_test_suite_name != NULL;                                                                                                                                    \
+        bool test = __ctf_current_test_name != NULL;                                                                                                                                           \
         printf("%s[LOG%s%s%s%s]%s ", __CTF_ANSI_YELLOW, suite ? "/" : "", suite ? __ctf_current_test_suite_name : "", test ? "/" : "", test ? __ctf_current_test_name : "", __CTF_ANSI_RESET); \
         printf(__VA_ARGS__);                                                                                                                                                                   \
         putchar('\n');                                                                                                                                                                         \
-        FILE *file = __ctf_log_file ? __ctf_log_file : fopen(filename, "a");                                                                                                           \
-        bool old_use_colors = __ctf_try_use_colors;                                                                                                                                        \
-        __ctf_try_use_colors = false;                                                                                                                                                      \
+        FILE *file = __ctf_log_file ? __ctf_log_file : fopen(filename, "a");                                                                                                                   \
+        bool old_use_colors = __ctf_try_use_colors;                                                                                                                                            \
+        __ctf_try_use_colors = false;                                                                                                                                                          \
         if (file)                                                                                                                                                                              \
         {                                                                                                                                                                                      \
-            fprintf(file, "[LOG%s%s%s%s] ", suite ? "/" : "", suite ? __ctf_current_test_suite_name : "", test ? "/" : "", test ? __ctf_current_test_name : "");                       \
+            fprintf(file, "[LOG%s%s%s%s] ", suite ? "/" : "", suite ? __ctf_current_test_suite_name : "", test ? "/" : "", test ? __ctf_current_test_name : "");                               \
             fprintf(file, __VA_ARGS__);                                                                                                                                                        \
             fputc('\n', file);                                                                                                                                                                 \
-            if (!__ctf_log_file)                                                                                                                                                           \
+            if (!__ctf_log_file)                                                                                                                                                               \
                 fclose(file);                                                                                                                                                                  \
         }                                                                                                                                                                                      \
-        __ctf_try_use_colors = old_use_colors;                                                                                                                                             \
+        __ctf_try_use_colors = old_use_colors;                                                                                                                                                 \
     } while (0)
 
 void __CTF_HANDLE_SIGNAL(int sig);
@@ -457,48 +456,48 @@ void __CTF_HANDLE_SIGNAL(int sig)
     longjmp(__ctf_env, 1);
 }
 
-#define __CTF_SUITE_RUN_TESTS_IMPL(suite)                                                                                                                                    \
-    do                                                                                                                                                                       \
-    {                                                                                                                                                                        \
-        int i;                                                                                                                                                               \
+#define __CTF_SUITE_RUN_TESTS_IMPL(suite)                                                                                                                                                \
+    do                                                                                                                                                                                   \
+    {                                                                                                                                                                                    \
+        int i;                                                                                                                                                                           \
         printf("%s%sRunning Test Suite: %s\n%s", __CTF_ANSI_UNDERLINE, __CTF_ANSI_YELLOW, (suite).name, __CTF_ANSI_RESET);                                                               \
-        __ctf_current_test_suite_name = (char *)(suite).name;                                                                                                            \
-        int total_tests = 0, passed_tests = 0;                                                                                                                               \
-        for (i = 0; i < (suite).count; i++)                                                                                                                                  \
-        {                                                                                                                                                                    \
-            total_tests++;                                                                                                                                                   \
-            __ctf_current_test_name = (char *)(suite).tests[i].test_name;                                                                                                \
-            clock_t start = clock();                                                                                                                                         \
+        __ctf_current_test_suite_name = (char *)(suite).name;                                                                                                                            \
+        int total_tests = 0, passed_tests = 0;                                                                                                                                           \
+        for (i = 0; i < (suite).count; i++)                                                                                                                                              \
+        {                                                                                                                                                                                \
+            total_tests++;                                                                                                                                                               \
+            __ctf_current_test_name = (char *)(suite).tests[i].test_name;                                                                                                                \
+            clock_t start = clock();                                                                                                                                                     \
             printf("%sRunning Test: %s%s%s...\n%s", __CTF_ANSI_BLUE, __CTF_ANSI_YELLOW, __ctf_current_test_name, __CTF_ANSI_BLUE, __CTF_ANSI_RESET);                                     \
-            if (setjmp(__ctf_env) == 0)                                                                                                                                  \
-            {                                                                                                                                                                \
-                __signal_caught = 0;                                                                                                                                         \
-                int result = (suite).tests[i].test_func();                                                                                                                   \
-                if (result == __CTF_PASS_VALUE && __signal_caught == 0)                                                                                                       \
-                {                                                                                                                                                            \
+            if (setjmp(__ctf_env) == 0)                                                                                                                                                  \
+            {                                                                                                                                                                            \
+                __signal_caught = 0;                                                                                                                                                     \
+                int result = (suite).tests[i].test_func();                                                                                                                               \
+                if (result == __CTF_PASS_VALUE && __signal_caught == 0)                                                                                                                  \
+                {                                                                                                                                                                        \
                     printf("%sTest %s\"%s\"%s passed.%s\n", __CTF_ANSI_GREEN, __CTF_ANSI_YELLOW, __ctf_current_test_name, __CTF_ANSI_GREEN, __CTF_ANSI_RESET);                           \
-                    passed_tests++;                                                                                                                                          \
-                }                                                                                                                                                            \
-                else                                                                                                                                                         \
-                {                                                                                                                                                            \
-                    printf("%sTest \"%s\" failed.\n%s", __CTF_ANSI_RED, __ctf_current_test_name, __CTF_ANSI_RESET);                                                              \
-                }                                                                                                                                                            \
-            }                                                                                                                                                                \
-            else                                                                                                                                                             \
-            {                                                                                                                                                                \
+                    passed_tests++;                                                                                                                                                      \
+                }                                                                                                                                                                        \
+                else                                                                                                                                                                     \
+                {                                                                                                                                                                        \
+                    printf("%sTest \"%s\" failed.\n%s", __CTF_ANSI_RED, __ctf_current_test_name, __CTF_ANSI_RESET);                                                                      \
+                }                                                                                                                                                                        \
+            }                                                                                                                                                                            \
+            else                                                                                                                                                                         \
+            {                                                                                                                                                                            \
                 printf("%sTest %s\"%s\"%s failed due to signal %d.%s\n", __CTF_ANSI_RED, __CTF_ANSI_YELLOW, __ctf_current_test_name, __CTF_ANSI_RED, __signal_caught, __CTF_ANSI_RESET); \
-            }                                                                                                                                                                \
-            clock_t end = clock();                                                                                                                                           \
-            double elapsed_time = (double)(end - start) / CLOCKS_PER_SEC;                                                                                                    \
-            printf("\t%sElapsed time: %fs%s\n", __CTF_ANSI_YELLOW, elapsed_time, __CTF_ANSI_RESET);                                                                                  \
-        }                                                                                                                                                                    \
-        __ctf_current_test_name = NULL;                                                                                                                                  \
-        __CTF_LOG("\nTest suite %s\"%s\"%s summary:\n%sTotal tests: %d\n%sPassed tests: %d\n%sFailed tests: %d\n%sPass rate: %.2f%%%s",                                       \
-                 __CTF_ANSI_YELLOW, __ctf_current_test_suite_name, __CTF_ANSI_RESET,                                                                                             \
-                 __CTF_ANSI_BLUE, total_tests,                                                                                                                                   \
-                 __CTF_ANSI_GREEN, passed_tests,                                                                                                                                 \
-                 __CTF_ANSI_RED, total_tests - passed_tests,                                                                                                                     \
-                 __CTF_ANSI_YELLOW, (float)passed_tests / total_tests * 100, __CTF_ANSI_RESET);                                                                                      \
+            }                                                                                                                                                                            \
+            clock_t end = clock();                                                                                                                                                       \
+            double elapsed_time = (double)(end - start) / CLOCKS_PER_SEC;                                                                                                                \
+            printf("\t%sElapsed time: %fs%s\n", __CTF_ANSI_YELLOW, elapsed_time, __CTF_ANSI_RESET);                                                                                      \
+        }                                                                                                                                                                                \
+        __ctf_current_test_name = NULL;                                                                                                                                                  \
+        __CTF_LOG("\nTest suite %s\"%s\"%s summary:\n%sTotal tests: %d\n%sPassed tests: %d\n%sFailed tests: %d\n%sPass rate: %.2f%%%s",                                                  \
+                  __CTF_ANSI_YELLOW, __ctf_current_test_suite_name, __CTF_ANSI_RESET,                                                                                                    \
+                  __CTF_ANSI_BLUE, total_tests,                                                                                                                                          \
+                  __CTF_ANSI_GREEN, passed_tests,                                                                                                                                        \
+                  __CTF_ANSI_RED, total_tests - passed_tests,                                                                                                                            \
+                  __CTF_ANSI_YELLOW, (float)passed_tests / total_tests * 100, __CTF_ANSI_RESET);                                                                                         \
     } while (0)
 
 /**
@@ -535,32 +534,32 @@ void __CTF_SUITE_LINK_FUNC(__CTF_Test_Suite *suite, int (*test_func)(), const ch
     if (suite->count >= suite->capacity)
     {
         suite->capacity = suite->capacity == 0 ? 1 : suite->capacity * 2;
-        suite->tests = (__CTF_Test*)realloc(suite->tests, suite->capacity * sizeof(__CTF_Test));
+        suite->tests = (__CTF_Test *)realloc(suite->tests, suite->capacity * sizeof(__CTF_Test));
     }
     suite->tests[suite->count].test_func = test_func;
     suite->tests[suite->count].test_name = test_name;
     suite->count++;
 }
 
-#define __CTF_SUITE_IMPL(name, ...)                \
-    __CTF_SUITE_MAKE(name)                          \
-    {                                              \
+#define __CTF_SUITE_IMPL(name, ...)            \
+    __CTF_SUITE_MAKE(name)                     \
+    {                                          \
         __ctf_current_test_suite_name = #name; \
-        int i = 22 + strlen(#name), j = i;         \
-        while (i--)                                \
-        {                                          \
-            putchar('+');                          \
-        }                                          \
-        putchar('\n');                             \
-        __CTF_LOG_TIME();                           \
-        __CTF_BLOCK(__VA_ARGS__);                   \
-        __CTF_SUITE_END(name);                      \
-        i = j;                                     \
-        while (i--)                                \
-        {                                          \
-            putchar('-');                          \
-        }                                          \
-        putchar('\n');                             \
+        int i = 22 + strlen(#name), j = i;     \
+        while (i--)                            \
+        {                                      \
+            putchar('+');                      \
+        }                                      \
+        putchar('\n');                         \
+        __CTF_LOG_TIME();                      \
+        __CTF_BLOCK(__VA_ARGS__);              \
+        __CTF_SUITE_END(name);                 \
+        i = j;                                 \
+        while (i--)                            \
+        {                                      \
+            putchar('-');                      \
+        }                                      \
+        putchar('\n');                         \
     }
 
 #define __CTF_LOG_TIME_IMPL()                                    \
@@ -569,9 +568,9 @@ void __CTF_SUITE_LINK_FUNC(__CTF_Test_Suite *suite, int (*test_func)(), const ch
         time(&t);                                                \
         char buff[70];                                           \
         if (strftime(buff, sizeof buff, "%A %c", localtime(&t))) \
-            __CTF_LOG(buff);                                      \
+            __CTF_LOG(buff);                                     \
         else                                                     \
-            __CTF_LOG("Could not get date and time info.");       \
+            __CTF_LOG("Could not get date and time info.");      \
     }
 
 #define __CTF_SUITE_RUN_IMPL(name)        \
@@ -579,30 +578,30 @@ void __CTF_SUITE_LINK_FUNC(__CTF_Test_Suite *suite, int (*test_func)(), const ch
     {                                     \
         __CTF_REGISTER_SIGNAL_HANDLERS(); \
         name##_suite_func();              \
-        __ctf_suites_ran++;           \
+        __ctf_suites_ran++;               \
         __CTF_RESET_SIGNAL_HANDLERS();    \
     } while (0)
 
-#define __CTF_SUITE_MAKE_IMPL(__name)  \
+#define __CTF_SUITE_MAKE_IMPL(__name)   \
     __CTF_Test_Suite __name##_suite = { \
-        .tests = NULL,                 \
-        .count = 0,                    \
-        .capacity = 0,                 \
-        .name = #__name,               \
-    };                                 \
+        .tests = NULL,                  \
+        .count = 0,                     \
+        .capacity = 0,                  \
+        .name = #__name,                \
+    };                                  \
     void __name##_suite_func()
 
-#define __CTF_SUITE_END_IMPL(name)                                                                                    \
-    do                                                                                                                \
-    {                                                                                                                 \
-        clock_t test_start_time = clock();                                                                            \
-        __CTF_SUITE_RUN_TESTS(name##_suite);                                                                          \
-        clock_t test_runtime = clock() - test_start_time;                                                             \
-        float test_runtime_sec = (double)(test_runtime) / CLOCKS_PER_SEC;                                             \
+#define __CTF_SUITE_END_IMPL(name)                                                                                             \
+    do                                                                                                                         \
+    {                                                                                                                          \
+        clock_t test_start_time = clock();                                                                                     \
+        __CTF_SUITE_RUN_TESTS(name##_suite);                                                                                   \
+        clock_t test_runtime = clock() - test_start_time;                                                                      \
+        float test_runtime_sec = (double)(test_runtime) / CLOCKS_PER_SEC;                                                      \
         __CTF_LOG("\nTest suite %s\"%s\"%s tests ran for %fs.", __CTF_ANSI_YELLOW, #name, __CTF_ANSI_RESET, test_runtime_sec); \
-        free((name##_suite).tests);                                                                                   \
-        __ctf_current_test_name = NULL;                                                                           \
-        __ctf_current_test_suite_name = NULL;                                                                     \
+        free((name##_suite).tests);                                                                                            \
+        __ctf_current_test_name = NULL;                                                                                        \
+        __ctf_current_test_suite_name = NULL;                                                                                  \
     } while (0);
 
 void __CTF_PROCESS_INIT_IMPL(int argc, char **argv)

@@ -128,14 +128,17 @@ TEST_SUITE(
     })
 #include <time.h>
 
-int main()
+int main(int argc, char **argv)
 {
-    /* __testing_handle_signal_ask_user = 1; */
-    TEST_LOG("Running tests...");
-    TEST_SUITE_RUN(Example);
-    TEST_SUITE_RUN(Vec);
-    TEST_SUITE_RUN(Map);
-    TEST_LOG("The following suite should fail");
-    TEST_SUITE_RUN(Intentional_Fail);
+    /* Optional to use, but will allow for command line args to control aspects of the test process*/
+    TEST_PROCESS_INIT();
+        TEST_LOG("Running tests...");
+        TEST_SUITE_RUN(Example);
+        TEST_SUITE_RUN(Vec);
+        TEST_SUITE_RUN(Map);
+        TEST_LOG("The following suite should fail");
+        TEST_SUITE_RUN(Intentional_Fail);
+    /* Only needs to be used at the end of main if INIT was called otherwise its optional */
+    TEST_PROCESS_EXIT();
     return 0;
 }

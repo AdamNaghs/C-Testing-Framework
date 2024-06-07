@@ -24,6 +24,11 @@
 
 char *TEST_LOG_FILE_NAME = "testing_log.txt";
 
+/**
+ * @brief Takes the same input as printf. The user does not need newlines at the end of their format strings or messages.
+ *
+ * @note Also writes output to a log file.
+ */
 #define TEST_LOG(...) __TEST_LOG_IMPL(TEST_LOG_FILE_NAME, __VA_ARGS__)
 
 /**
@@ -70,14 +75,14 @@ char *TEST_LOG_FILE_NAME = "testing_log.txt";
         if (!(cond))                  \
         {                             \
             __TEST_ASSERT_TEXT(cond); \
-            TEST_LOG(__VA_ARGS__);      \
+            TEST_LOG(__VA_ARGS__);    \
             TEST_FAIL();              \
         }                             \
     } while (0)
 
 #define TEST_BLOCK(...) \
     {                   \
-        __VA_ARGS__     \
+        __VA_ARGS__;     \
     }
 
 /**
@@ -111,11 +116,46 @@ char *TEST_LOG_FILE_NAME = "testing_log.txt";
         if (!(cond))                                 \
         {                                            \
             __TEST_ASSERT_TEXT(cond);                \
-            TEST_LOG(__VA_ARGS__);                     \
+            TEST_LOG(__VA_ARGS__);                   \
             clean_func;                              \
             TEST_FAIL();                             \
         }                                            \
     } while (0)
+
+/**
+ * @brief Creates a test suite with the given name. This is the preferred, but not required, way to create a test suite.
+ * 
+ * @param name Name of the test suite.
+ * @param ... Code to run in the test suite, optionally enclose in semicolons. This is where you link your tests to the suite.
+ */
+#define TEST_SUITE(name, ...)                                                                                           \
+    TEST_SUITE_MAKE(name)                                                                                               \
+    {                                                                                                                   \
+        clock_t suite_start_time = clock();                                                                             \
+        __current_test_suite_name = #name;                                                                              \
+        int i = 22 + strlen(#name);                                                                                     \
+        while (i--)                                                                                                     \
+        {                                                                                                               \
+            putchar('=');                                                                                               \
+        }                                                                                                               \
+        putchar('\n');                                                                                                  \
+        time_t t;                                                                                                       \
+        time(&t);                                                                                                       \
+        char buff[70];                                                                                                  \
+        if (strftime(buff, sizeof buff, "%A %c", localtime(&t)))                                                        \
+            TEST_LOG(buff);                                                                                             \
+        else                                                                                                            \
+            TEST_LOG("Could not get date and time info.");                                                              \
+        TEST_BLOCK(__VA_ARGS__);                                                                                        \
+        clock_t test_start_time = clock();                                                                              \
+        TEST_SUITE_END(name);                                                                                           \
+        clock_t end_time = clock();                                                                                     \
+        clock_t suite_runtime = end_time - suite_start_time;                                                            \
+        clock_t test_runtime = end_time - test_start_time;                                                              \
+        float suite_runtime_sec = (double)(suite_runtime) / CLOCKS_PER_SEC;                                             \
+        float test_runtime_sec = (double)(test_runtime) / CLOCKS_PER_SEC;                                               \
+        TEST_LOG("Suite \"%s\" completed in %fs, tests completed in %fs.", #name, suite_runtime_sec, test_runtime_sec); \
+    }
 
 /**
  * @brief Used inside of a test suite to link a test to the suite.
@@ -134,19 +174,17 @@ char *TEST_LOG_FILE_NAME = "testing_log.txt";
         (__suite##_suite).count++;                                                                                 \
     } while (0)
 
-#define TEST_SUITE(name, ...)              \
-    TEST_SUITE_MAKE(name)                  \
-    {                                      \
-        __current_test_suite_name = #name; \
-        int i = 22 + strlen(#name);        \
-        while (i--)                        \
-        {                                  \
-            putchar('=');                  \
-        }                                  \
-        putchar('\n');                     \
-        TEST_BLOCK(__VA_ARGS__);           \
-        TEST_SUITE_END(name);              \
-    }
+/**
+ * @brief Call this macro to run a test suite.
+ *
+ */
+#define TEST_SUITE_RUN(name)                  \
+    do                                        \
+    {                                         \
+        __TESTING_REGISTER_SIGNAL_HANDLERS(); \
+        name##_suite_func();                  \
+        __TESTING_RESET_SIGNAL_HANDLERS();    \
+    } while (0)
 
 /*
     If you use TEST_SUITE you dont need to use the following macros.
@@ -178,18 +216,6 @@ char *TEST_LOG_FILE_NAME = "testing_log.txt";
         __current_test_name = NULL;           \
         __current_test_suite_name = NULL;     \
     } while (0);
-
-/**
- * @brief Call this macro to run a test suite.
- *
- */
-#define TEST_SUITE_RUN(name)                  \
-    do                                        \
-    {                                         \
-        __TESTING_REGISTER_SIGNAL_HANDLERS(); \
-        name##_suite_func();                  \
-        __TESTING_RESET_SIGNAL_HANDLERS();    \
-    } while (0)
 
 /* All that follows is used internally. */
 
@@ -245,11 +271,11 @@ bool __testing_does_terminal_support_ansi_color()
 #define __ANSI_UNDERLINE (__testing_does_terminal_support_ansi_color() ? "\x1b[4m" : "")
 #define __ANSI_RESET (__testing_does_terminal_support_ansi_color() ? "\x1b[0m" : "")
 
-#define __TEST_FAIL_TEXT()                                                                    \
-    printf("\t%sFail in Suite: %s\"%s\"%s: Test %s\"%s\"%s:%s\n\t\tfile: %s\n\t\tline: %d\n", \
+#define __TEST_FAIL_TEXT()                                                                   \
+    printf("\t%sFail in Suite:%s\"%s\"%s, Test:%s\"%s\"%s:%s\n\t\tfile: %s\n\t\tline: %d\n", \
            __ANSI_RED, __ANSI_YELLOW, __current_test_suite_name, __ANSI_RED, __ANSI_YELLOW, __current_test_name, __ANSI_RED, __ANSI_RESET, __FILE__, __LINE__);
 
-#define __TEST_ASSERT_TEXT(cond)                  \
+#define __TEST_ASSERT_TEXT(cond)                      \
     printf("%s\tAssertion failed:%s\n\t\tcond: %s\n", \
            __ANSI_RED, __ANSI_RESET, #cond)
 
@@ -419,7 +445,7 @@ void __TESTING_RESET_SIGNAL_HANDLERS(void)
 
 /**
  * @brief Defines TEST_SUITE_RUN_TESTS as a function for preventing variable name reuse.
- * 
+ *
  * @note only declare if your test suite is polluted with local/global variable names.
  *
  */
@@ -434,7 +460,7 @@ void __TEST_SUITE_RUN_TESTS(TestSuite suite)
 
 /**
  * @brief Takes a filename rather than FILE* because we expect a critial error to occur and always want to ensure that the log is written.
- * 
+ *
  */
 #define __TEST_LOG_IMPL(filename, ...)                                                                                                                                         \
     do                                                                                                                                                                         \

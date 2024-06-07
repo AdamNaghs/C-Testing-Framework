@@ -64,8 +64,8 @@ TEST_MAKE(Map_Test)
     map_add(int_map, &tmp, &tmp);
     TEST_ASSERT(int_map->length == 1);
     int *tmp2 = (int *)map_get(int_map, &tmp);
-    TEST_ASSERT_CLEAN_MSG(tmp2 != NULL, map_free(int_map), "Failed to get value from map");
-    TEST_ASSERT_CLEAN_MSG(*tmp2 == tmp,
+    TEST_ASSERT_CLEAN_LOG(tmp2 != NULL, map_free(int_map), "Failed to get value from map");
+    TEST_ASSERT_CLEAN_LOG(*tmp2 == tmp,
                           TEST_CLEAN_FUNC(
                               {
                                   int i, j;

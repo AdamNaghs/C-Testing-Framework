@@ -30,7 +30,7 @@ char *TEST_LOG_FILE_NAME = "testing.log";
  *
  * @note Also writes output to a log file.
  */
-#define TEST_LOG(...) __TEST_LOG_IMPL(TEST_LOG_FILE_NAME, __VA_ARGS__)
+#define TEST_LOG(...) __CTF_LOG_IMPL(TEST_LOG_FILE_NAME, __VA_ARGS__)
 
 #define TEST_LOG_TIME()                                          \
     do                                                           \
@@ -60,7 +60,7 @@ char *TEST_LOG_FILE_NAME = "testing.log";
 #define TEST_FAIL()             \
     do                          \
     {                           \
-        __TEST_FAIL_TEXT();     \
+        __CTF_FAIL_TEXT();      \
         return TEST_FAIL_VALUE; \
     } while (0)
 
@@ -68,29 +68,29 @@ char *TEST_LOG_FILE_NAME = "testing.log";
  * @brief If the condition is not met, the test fails.
  *
  */
-#define TEST_ASSERT(cond)             \
-    do                                \
-    {                                 \
-        if (!(cond))                  \
-        {                             \
-            __TEST_ASSERT_TEXT(cond); \
-            TEST_FAIL();              \
-        }                             \
+#define TEST_ASSERT(cond)            \
+    do                               \
+    {                                \
+        if (!(cond))                 \
+        {                            \
+            __CTF_ASSERT_TEXT(cond); \
+            TEST_FAIL();             \
+        }                            \
     } while (0)
 
 /**
  * @brief If the condition is not met, the test fails.
  *
  */
-#define TEST_ASSERT_LOG(cond, ...)    \
-    do                                \
-    {                                 \
-        if (!(cond))                  \
-        {                             \
-            __TEST_ASSERT_TEXT(cond); \
-            TEST_LOG(__VA_ARGS__);    \
-            TEST_FAIL();              \
-        }                             \
+#define TEST_ASSERT_LOG(cond, ...)   \
+    do                               \
+    {                                \
+        if (!(cond))                 \
+        {                            \
+            __CTF_ASSERT_TEXT(cond); \
+            TEST_LOG(__VA_ARGS__);   \
+            TEST_FAIL();             \
+        }                            \
     } while (0)
 
 #define TEST_BLOCK(...) \
@@ -112,15 +112,15 @@ char *TEST_LOG_FILE_NAME = "testing.log";
  * @note doesnt require second arg to be TEST_BLOCK or TEST_CLEAN_FUNC but it should be.
  *
  */
-#define TEST_ASSERT_CLEAN(cond, ...)  \
-    do                                \
-    {                                 \
-        if (!(cond))                  \
-        {                             \
-            __TEST_ASSERT_TEXT(cond); \
-            __VA_ARGS__;              \
-            TEST_FAIL();              \
-        }                             \
+#define TEST_ASSERT_CLEAN(cond, ...) \
+    do                               \
+    {                                \
+        if (!(cond))                 \
+        {                            \
+            __CTF_ASSERT_TEXT(cond); \
+            __VA_ARGS__;             \
+            TEST_FAIL();             \
+        }                            \
     } while (0)
 
 /**
@@ -134,7 +134,7 @@ char *TEST_LOG_FILE_NAME = "testing.log";
     {                                                \
         if (!(cond))                                 \
         {                                            \
-            __TEST_ASSERT_TEXT(cond);                \
+            __CTF_ASSERT_TEXT(cond);                 \
             TEST_LOG(__VA_ARGS__);                   \
             clean_func;                              \
             TEST_FAIL();                             \
@@ -147,34 +147,34 @@ char *TEST_LOG_FILE_NAME = "testing.log";
  * @param name Name of the test suite.
  * @param ... Code to run in the test suite, optionally enclose in semicolons. This is where you link your tests to the suite.
  */
-#define TEST_SUITE(name, ...) __TEST_SUITE_IMPL(name, __VA_ARGS__)
+#define TEST_SUITE(name, ...) __CTF_SUITE_IMPL(name, __VA_ARGS__)
 
 /**
  * @brief Used inside of a test suite to link a test to the suite.
  *
  */
-#define TEST_SUITE_LINK(__suite, test) __TEST_SUITE_LINK_FUNC(&__suite##_suite, test##_func, #test)
+#define TEST_SUITE_LINK(__suite, test) __CTF_SUITE_LINK_FUNC(&__suite##_suite, test##_func, #test)
 
 /**
  * @brief Call this macro to run a test suite.
  *
  */
-#define TEST_SUITE_RUN(name)                  \
-    do                                        \
-    {                                         \
-        __TESTING_REGISTER_SIGNAL_HANDLERS(); \
-        name##_suite_func();                  \
-        __testing_suites_ran++;               \
-        __TESTING_RESET_SIGNAL_HANDLERS();    \
+#define TEST_SUITE_RUN(name)              \
+    do                                    \
+    {                                     \
+        __CTF_REGISTER_SIGNAL_HANDLERS(); \
+        name##_suite_func();              \
+        __testing_suites_ran++;           \
+        __CTF_RESET_SIGNAL_HANDLERS();    \
     } while (0)
 
 /**
  * @brief Use in a main function that has argv and argc to alter the some aspects of the testing framework.
  *
  */
-#define TEST_PROCESS_INIT() __TEST_PROCESS_INIT_IMPL(argc, argv)
+#define TEST_PROCESS_INIT() __CTF_PROCESS_INIT_IMPL(argc, argv)
 
-#define TEST_PROCESS_EXIT() __TEST_PROCESS_EXIT_IMPL()
+#define TEST_PROCESS_EXIT() __CTF_PROCESS_EXIT_IMPL()
 
 /*
     If you use TEST_SUITE you dont need to use the following macros.
@@ -185,13 +185,13 @@ char *TEST_LOG_FILE_NAME = "testing.log";
  *
  * @note Don't forget to call TEST_SUITE_END at the end of the suite.
  */
-#define TEST_SUITE_MAKE(__name)  \
-    TestSuite __name##_suite = { \
-        .tests = NULL,           \
-        .count = 0,              \
-        .capacity = 0,           \
-        .name = #__name,         \
-    };                           \
+#define TEST_SUITE_MAKE(__name)    \
+    __TestSuite __name##_suite = { \
+        .tests = NULL,             \
+        .count = 0,                \
+        .capacity = 0,             \
+        .name = #__name,           \
+    };                             \
     void __name##_suite_func()
 
 /**
@@ -202,93 +202,37 @@ char *TEST_LOG_FILE_NAME = "testing.log";
     do                                                                                                                \
     {                                                                                                                 \
         clock_t test_start_time = clock();                                                                            \
-        __TEST_SUITE_RUN_TESTS(name##_suite);                                                                         \
+        __CTF_SUITE_RUN_TESTS(name##_suite);                                                                          \
         clock_t test_runtime = clock() - test_start_time;                                                             \
         float test_runtime_sec = (double)(test_runtime) / CLOCKS_PER_SEC;                                             \
         TEST_LOG("\nTest suite %s\"%s\"%s tests ran for %fs.", __ANSI_YELLOW, #name, __ANSI_RESET, test_runtime_sec); \
         free((name##_suite).tests);                                                                                   \
-        __current_test_name = NULL;                                                                                   \
-        __current_test_suite_name = NULL;                                                                             \
+        __testing_current_test_name = NULL;                                                                           \
+        __testing_current_test_suite_name = NULL;                                                                     \
     } while (0);
 
-/* All that follows is used internally. */
-
-bool __testing_try_use_colors = true;
-
-/* Meant to be crossplatform */
-bool __testing_ansi_support()
-{
-    if (!__testing_try_use_colors)
-    {
-        return false;
-    }
-    static bool ran_before = false;
-    static bool supports_colors = false;
-
-    if (ran_before)
-    {
-        return supports_colors;
-    }
-
-    ran_before = true;
-
-    char *term = getenv("TERM");
-    if (term != NULL &&
-        (strstr(term, "xterm") != NULL || strstr(term, "color") != NULL ||
-         strstr(term, "ansi") != NULL || strstr(term, "cygwin") != NULL ||
-         strstr(term, "linux") != NULL || strstr(term, "screen") != NULL ||
-         strstr(term, "tmux") != NULL || strstr(term, "vt100") != NULL ||
-         strstr(term, "rxvt") != NULL || strstr(term, "konsole") != NULL ||
-         strstr(term, "gnome") != NULL || strstr(term, "eterm") != NULL ||
-         strstr(term, "vscode") != NULL))
-    {
-        supports_colors = true;
-        return true;
-    }
-
-    char *colorterm = getenv("COLORTERM");
-    if (colorterm != NULL &&
-        (strstr(colorterm, "truecolor") != NULL || strstr(colorterm, "24bit") != NULL))
-    {
-        supports_colors = true;
-        return true;
-    }
-
-    supports_colors = false;
-    return false;
-}
-
-#define __ANSI_RED (__testing_ansi_support() ? "\x1b[31m" : "")
-#define __ANSI_GREEN (__testing_ansi_support() ? "\x1b[32m" : "")
-#define __ANSI_YELLOW (__testing_ansi_support() ? "\x1b[33m" : "")
-#define __ANSI_BLUE (__testing_ansi_support() ? "\x1b[34m" : "")
-#define __ANSI_UNDERLINE (__testing_ansi_support() ? "\x1b[4m" : "")
-#define __ANSI_RESET (__testing_ansi_support() ? "\x1b[0m" : "")
-
-#define __TEST_FAIL_TEXT()                                                                     \
-    TEST_LOG("\n\t%sFail in Suite:%s\"%s\"%s, Test:%s\"%s\"%s:%s\n\t\tfile: %s\n\t\tline: %d", \
-             __ANSI_RED, __ANSI_YELLOW, __current_test_suite_name, __ANSI_RED, __ANSI_YELLOW, __current_test_name, __ANSI_RED, __ANSI_RESET, __FILE__, __LINE__);
-
-#define __TEST_ASSERT_TEXT(cond)                        \
-    TEST_LOG("\n\t%sAssertion failed:%s\n\t\tcond: %s", \
-             __ANSI_RED, __ANSI_RESET, #cond)
+/*
+    ====================================================================================================
+                                All that follows is used internally.
+    ====================================================================================================
+*/
 
 typedef struct
 {
     int (*test_func)();
     const char *test_name;
-} Test;
+} __Test;
 
 typedef struct
 {
-    Test *tests;
+    __Test *tests;
     int count;
     int capacity;
     const char *name;
-} TestSuite;
+} __TestSuite;
 
-char *__current_test_suite_name = NULL;
-char *__current_test_name = NULL;
+char *__testing_current_test_suite_name = NULL;
+char *__testing_current_test_name = NULL;
 
 unsigned int __testing_suites_ran = 0;
 
@@ -304,9 +248,63 @@ clock_t __testing_process_start_time = -1;
  *
  * @note When enabled, if you are running the test program from a debugger it may cause the program to hang.
  */
-bool __testing_handle_signal_ask_user = false;
+bool __TESTING_HANDLE_SIGNAL_ask_user = false;
 
-bool __testing_ask_user()
+bool __testing_try_use_colors = true;
+
+/* Meant to be crossplatform */
+bool __TESTING_ANSI_SUPPORT()
+{
+    if (!__testing_try_use_colors)
+    {
+        return false;
+    }
+    static bool ran_before = false, supports_colors = false;
+    if (ran_before)
+    {
+        return supports_colors;
+    }
+    ran_before = true;
+    char *term = getenv("TERM");
+    if (term != NULL &&
+        (strstr(term, "xterm") != NULL || strstr(term, "color") != NULL ||
+         strstr(term, "ansi") != NULL || strstr(term, "cygwin") != NULL ||
+         strstr(term, "linux") != NULL || strstr(term, "screen") != NULL ||
+         strstr(term, "tmux") != NULL || strstr(term, "vt100") != NULL ||
+         strstr(term, "rxvt") != NULL || strstr(term, "konsole") != NULL ||
+         strstr(term, "gnome") != NULL || strstr(term, "eterm") != NULL ||
+         strstr(term, "vscode") != NULL))
+    {
+        supports_colors = true;
+        return true;
+    }
+    char *colorterm = getenv("COLORTERM");
+    if (colorterm != NULL &&
+        (strstr(colorterm, "truecolor") != NULL || strstr(colorterm, "24bit") != NULL))
+    {
+        supports_colors = true;
+        return true;
+    }
+    supports_colors = false;
+    return false;
+}
+
+#define __ANSI_RED (__TESTING_ANSI_SUPPORT() ? "\x1b[31m" : "")
+#define __ANSI_GREEN (__TESTING_ANSI_SUPPORT() ? "\x1b[32m" : "")
+#define __ANSI_YELLOW (__TESTING_ANSI_SUPPORT() ? "\x1b[33m" : "")
+#define __ANSI_BLUE (__TESTING_ANSI_SUPPORT() ? "\x1b[34m" : "")
+#define __ANSI_UNDERLINE (__TESTING_ANSI_SUPPORT() ? "\x1b[4m" : "")
+#define __ANSI_RESET (__TESTING_ANSI_SUPPORT() ? "\x1b[0m" : "")
+
+#define __CTF_FAIL_TEXT()                                                                      \
+    TEST_LOG("\n\t%sFail in Suite:%s\"%s\"%s, Test:%s\"%s\"%s:%s\n\t\tfile: %s\n\t\tline: %d", \
+             __ANSI_RED, __ANSI_YELLOW, __testing_current_test_suite_name, __ANSI_RED, __ANSI_YELLOW, __testing_current_test_name, __ANSI_RED, __ANSI_RESET, __FILE__, __LINE__);
+
+#define __CTF_ASSERT_TEXT(cond)                         \
+    TEST_LOG("\n\t%sAssertion failed:%s\n\t\tcond: %s", \
+             __ANSI_RED, __ANSI_RESET, #cond)
+
+bool __TESTING_ASK_USER()
 {
     fflush(stdin);
     char c = 0;
@@ -323,43 +321,60 @@ bool __testing_ask_user()
     return true;
 }
 
-void __TESTING_REGISTER_SIGNAL_HANDLERS(void);
-void __TESTING_RESET_SIGNAL_HANDLERS(void);
-
 /**
  * @brief Takes a filename rather than FILE* because we expect a critial error to occur and always want to ensure that the log is written.
  *
  * @note If TEST_PROCESS_INIT was called then we will use already opened __testing_log_file. This enables faster logging.
  *
  */
-#define __TEST_LOG_IMPL(filename, ...)                                                                                                                                         \
-    do                                                                                                                                                                         \
-    {                                                                                                                                                                          \
-        bool suite = __current_test_suite_name != NULL;                                                                                                                        \
-        bool test = __current_test_name != NULL;                                                                                                                               \
-        printf("%s[LOG%s%s%s%s]%s ", __ANSI_YELLOW, suite ? "/" : "", suite ? __current_test_suite_name : "", test ? "/" : "", test ? __current_test_name : "", __ANSI_RESET); \
-        printf(__VA_ARGS__);                                                                                                                                                   \
-        putchar('\n');                                                                                                                                                         \
-        FILE *file = __testing_log_file ? __testing_log_file : fopen(filename, "a");                                                                                           \
-        bool old_use_colors = __testing_try_use_colors;                                                                                                                        \
-        __testing_try_use_colors = false;                                                                                                                                      \
-        if (file)                                                                                                                                                              \
-        {                                                                                                                                                                      \
-            fprintf(file, "[LOG%s%s%s%s] ", suite ? "/" : "", suite ? __current_test_suite_name : "", test ? "/" : "", test ? __current_test_name : "");                       \
-            fprintf(file, __VA_ARGS__);                                                                                                                                        \
-            fputc('\n', file);                                                                                                                                                 \
-            if (!__testing_log_file)                                                                                                                                           \
-                fclose(file);                                                                                                                                                  \
-        }                                                                                                                                                                      \
-        __testing_try_use_colors = old_use_colors;                                                                                                                             \
+#define __CTF_LOG_IMPL(filename, ...)                                                                                                                                                          \
+    do                                                                                                                                                                                         \
+    {                                                                                                                                                                                          \
+        bool suite = __testing_current_test_suite_name != NULL;                                                                                                                                \
+        bool test = __testing_current_test_name != NULL;                                                                                                                                       \
+        printf("%s[LOG%s%s%s%s]%s ", __ANSI_YELLOW, suite ? "/" : "", suite ? __testing_current_test_suite_name : "", test ? "/" : "", test ? __testing_current_test_name : "", __ANSI_RESET); \
+        printf(__VA_ARGS__);                                                                                                                                                                   \
+        putchar('\n');                                                                                                                                                                         \
+        FILE *file = __testing_log_file ? __testing_log_file : fopen(filename, "a");                                                                                                           \
+        bool old_use_colors = __testing_try_use_colors;                                                                                                                                        \
+        __testing_try_use_colors = false;                                                                                                                                                      \
+        if (file)                                                                                                                                                                              \
+        {                                                                                                                                                                                      \
+            fprintf(file, "[LOG%s%s%s%s] ", suite ? "/" : "", suite ? __testing_current_test_suite_name : "", test ? "/" : "", test ? __testing_current_test_name : "");                       \
+            fprintf(file, __VA_ARGS__);                                                                                                                                                        \
+            fputc('\n', file);                                                                                                                                                                 \
+            if (!__testing_log_file)                                                                                                                                                           \
+                fclose(file);                                                                                                                                                                  \
+        }                                                                                                                                                                                      \
+        __testing_try_use_colors = old_use_colors;                                                                                                                                             \
     } while (0)
 
-#define __TESTING_SIGBUFF_SIZE 60
-#define __TESTING_ERRBUFF_SIZE (__TESTING_SIGBUFF_SIZE + 150)
-#define __TESTING_BUFF_SIZE (__TESTING_ERRBUFF_SIZE + 150)
+void __TESTING_HANDLE_SIGNAL(int sig);
+
+/* Register signal handlers macro */
+void __CTF_REGISTER_SIGNAL_HANDLERS(void)
+{
+    signal(SIGSEGV, __TESTING_HANDLE_SIGNAL);
+    signal(SIGFPE, __TESTING_HANDLE_SIGNAL);
+    signal(SIGILL, __TESTING_HANDLE_SIGNAL);
+    signal(SIGABRT, __TESTING_HANDLE_SIGNAL);
+}
+
+/* Reset signal handlers macro */
+void __CTF_RESET_SIGNAL_HANDLERS(void)
+{
+    signal(SIGSEGV, SIG_DFL);
+    signal(SIGFPE, SIG_DFL);
+    signal(SIGILL, SIG_DFL);
+    signal(SIGABRT, SIG_DFL);
+}
+
+#define __CTF_SIGBUFF_SIZE 60
+#define __CTF_ERRBUFF_SIZE (__CTF_SIGBUFF_SIZE + 150)
+#define __CTF_BUFF_SIZE (__CTF_ERRBUFF_SIZE + 150)
 
 /* Signal handling functions */
-void __testing_handle_signal(int sig)
+void __TESTING_HANDLE_SIGNAL(int sig)
 {
     const char *signal_name;
     switch (sig)
@@ -379,25 +394,25 @@ void __testing_handle_signal(int sig)
     default:
         signal_name = "Unknown signal";
     }
-    char sigbuff[__TESTING_SIGBUFF_SIZE], errbuff[__TESTING_ERRBUFF_SIZE], buff[__TESTING_BUFF_SIZE];
+    char sigbuff[__CTF_SIGBUFF_SIZE], errbuff[__CTF_ERRBUFF_SIZE], buff[__CTF_BUFF_SIZE];
 
-    snprintf(sigbuff, __TESTING_SIGBUFF_SIZE, "\n\tCaught signal: %s (%d)\n", signal_name, sig);
-    if (__current_test_name != NULL)
+    snprintf(sigbuff, __CTF_SIGBUFF_SIZE, "\n\tCaught signal: %s (%d)\n", signal_name, sig);
+    if (__testing_current_test_name != NULL)
     {
-        snprintf(errbuff, __TESTING_ERRBUFF_SIZE, "%s\tError occurred during test: %s\n", sigbuff, __current_test_name);
+        snprintf(errbuff, __CTF_ERRBUFF_SIZE, "%s\tError occurred during test: %s\n", sigbuff, __testing_current_test_name);
     }
-    if (__current_test_suite_name != NULL)
+    if (__testing_current_test_suite_name != NULL)
     {
-        snprintf(buff, __TESTING_BUFF_SIZE, "%s\tIn test suite: %s", errbuff, __current_test_suite_name);
+        snprintf(buff, __CTF_BUFF_SIZE, "%s\tIn test suite: %s", errbuff, __testing_current_test_suite_name);
     }
     TEST_LOG("%s%s%s", __ANSI_RED, buff, __ANSI_RESET);
     /*  Reset signal handlers to default */
-    __TESTING_RESET_SIGNAL_HANDLERS();
+    __CTF_RESET_SIGNAL_HANDLERS();
 
-    if (__testing_handle_signal_ask_user)
+    if (__TESTING_HANDLE_SIGNAL_ask_user)
     {
         printf("Do you want to continue testing? ");
-        if (__testing_ask_user())
+        if (__TESTING_ASK_USER())
         {
             raise(sig);
             return;
@@ -408,66 +423,48 @@ void __testing_handle_signal(int sig)
     longjmp(__testing_env, 1);
 }
 
-/* Register signal handlers macro */
-void __TESTING_REGISTER_SIGNAL_HANDLERS(void)
-{
-    signal(SIGSEGV, __testing_handle_signal);
-    signal(SIGFPE, __testing_handle_signal);
-    signal(SIGILL, __testing_handle_signal);
-    signal(SIGABRT, __testing_handle_signal);
-}
-
-/* Reset signal handlers macro */
-void __TESTING_RESET_SIGNAL_HANDLERS(void)
-{
-    signal(SIGSEGV, SIG_DFL);
-    signal(SIGFPE, SIG_DFL);
-    signal(SIGILL, SIG_DFL);
-    signal(SIGABRT, SIG_DFL);
-}
-
-#define __TEST_SUITE_RUN_TESTS_IMPL(suite)                                                                                                                           \
-    do                                                                                                                                                               \
-    {                                                                                                                                                                \
-        int i;                                                                                                                                                       \
-        printf("%s%sRunning Test Suite: %s\n%s", __ANSI_UNDERLINE, __ANSI_YELLOW, (suite).name, __ANSI_RESET);                                                       \
-        __current_test_suite_name = (char *)(suite).name;                                                                                                            \
-        int total_tests = 0, passed_tests = 0;                                                                                                                       \
-        for (i = 0; i < (suite).count; i++)                                                                                                                          \
-        {                                                                                                                                                            \
-            total_tests++;                                                                                                                                           \
-            __current_test_name = (char *)(suite).tests[i].test_name;                                                                                                \
-            clock_t start = clock();                                                                                                                                 \
-            printf("%sRunning Test: %s%s%s...\n%s", __ANSI_BLUE, __ANSI_YELLOW, __current_test_name, __ANSI_BLUE, __ANSI_RESET);                                     \
-            if (setjmp(__testing_env) == 0)                                                                                                                          \
-            {                                                                                                                                                        \
-                __signal_caught = 0;                                                                                                                                 \
-                int result = (suite).tests[i].test_func();                                                                                                           \
-                if (result == TEST_PASS_VALUE && __signal_caught == 0)                                                                                               \
-                {                                                                                                                                                    \
-                    printf("%sTest %s\"%s\"%s passed.%s\n", __ANSI_GREEN, __ANSI_YELLOW, __current_test_name, __ANSI_GREEN, __ANSI_RESET);                           \
-                    passed_tests++;                                                                                                                                  \
-                }                                                                                                                                                    \
-                else                                                                                                                                                 \
-                {                                                                                                                                                    \
-                    printf("%sTest \"%s\" failed.\n%s", __ANSI_RED, __current_test_name, __ANSI_RESET);                                                              \
-                }                                                                                                                                                    \
-            }                                                                                                                                                        \
-            else                                                                                                                                                     \
-            {                                                                                                                                                        \
-                printf("%sTest %s\"%s\"%s failed due to signal %d.%s\n", __ANSI_RED, __ANSI_YELLOW, __current_test_name, __ANSI_RED, __signal_caught, __ANSI_RESET); \
-            }                                                                                                                                                        \
-            clock_t end = clock();                                                                                                                                   \
-            double elapsed_time = (double)(end - start) / CLOCKS_PER_SEC;                                                                                            \
-            printf("\t%sElapsed time: %fs%s\n", __ANSI_YELLOW, elapsed_time, __ANSI_RESET);                                                                          \
-        }                                                                                                                                                            \
-        __current_test_name = NULL;                                                                                                                                  \
-        TEST_LOG("\nTest suite %s\"%s\"%s summary:\n%sTotal tests: %d\n%sPassed tests: %d\n%sFailed tests: %d\n%sPass rate: %.2f%%%s",                               \
-                 __ANSI_YELLOW, __current_test_suite_name, __ANSI_RESET,                                                                                             \
-                 __ANSI_BLUE, total_tests,                                                                                                                           \
-                 __ANSI_GREEN, passed_tests,                                                                                                                         \
-                 __ANSI_RED, total_tests - passed_tests,                                                                                                             \
-                 __ANSI_YELLOW, (float)passed_tests / total_tests * 100, __ANSI_RESET);                                                                              \
+#define __CTF_SUITE_RUN_TESTS_IMPL(suite)                                                                                                                                    \
+    do                                                                                                                                                                       \
+    {                                                                                                                                                                        \
+        int i;                                                                                                                                                               \
+        printf("%s%sRunning Test Suite: %s\n%s", __ANSI_UNDERLINE, __ANSI_YELLOW, (suite).name, __ANSI_RESET);                                                               \
+        __testing_current_test_suite_name = (char *)(suite).name;                                                                                                            \
+        int total_tests = 0, passed_tests = 0;                                                                                                                               \
+        for (i = 0; i < (suite).count; i++)                                                                                                                                  \
+        {                                                                                                                                                                    \
+            total_tests++;                                                                                                                                                   \
+            __testing_current_test_name = (char *)(suite).tests[i].test_name;                                                                                                \
+            clock_t start = clock();                                                                                                                                         \
+            printf("%sRunning Test: %s%s%s...\n%s", __ANSI_BLUE, __ANSI_YELLOW, __testing_current_test_name, __ANSI_BLUE, __ANSI_RESET);                                     \
+            if (setjmp(__testing_env) == 0)                                                                                                                                  \
+            {                                                                                                                                                                \
+                __signal_caught = 0;                                                                                                                                         \
+                int result = (suite).tests[i].test_func();                                                                                                                   \
+                if (result == TEST_PASS_VALUE && __signal_caught == 0)                                                                                                       \
+                {                                                                                                                                                            \
+                    printf("%sTest %s\"%s\"%s passed.%s\n", __ANSI_GREEN, __ANSI_YELLOW, __testing_current_test_name, __ANSI_GREEN, __ANSI_RESET);                           \
+                    passed_tests++;                                                                                                                                          \
+                }                                                                                                                                                            \
+                else                                                                                                                                                         \
+                {                                                                                                                                                            \
+                    printf("%sTest \"%s\" failed.\n%s", __ANSI_RED, __testing_current_test_name, __ANSI_RESET);                                                              \
+                }                                                                                                                                                            \
+            }                                                                                                                                                                \
+            else                                                                                                                                                             \
+            {                                                                                                                                                                \
+                printf("%sTest %s\"%s\"%s failed due to signal %d.%s\n", __ANSI_RED, __ANSI_YELLOW, __testing_current_test_name, __ANSI_RED, __signal_caught, __ANSI_RESET); \
+            }                                                                                                                                                                \
+            clock_t end = clock();                                                                                                                                           \
+            double elapsed_time = (double)(end - start) / CLOCKS_PER_SEC;                                                                                                    \
+            printf("\t%sElapsed time: %fs%s\n", __ANSI_YELLOW, elapsed_time, __ANSI_RESET);                                                                                  \
+        }                                                                                                                                                                    \
+        __testing_current_test_name = NULL;                                                                                                                                  \
+        TEST_LOG("\nTest suite %s\"%s\"%s summary:\n%sTotal tests: %d\n%sPassed tests: %d\n%sFailed tests: %d\n%sPass rate: %.2f%%%s",                                       \
+                 __ANSI_YELLOW, __testing_current_test_suite_name, __ANSI_RESET,                                                                                             \
+                 __ANSI_BLUE, total_tests,                                                                                                                                   \
+                 __ANSI_GREEN, passed_tests,                                                                                                                                 \
+                 __ANSI_RED, total_tests - passed_tests,                                                                                                                     \
+                 __ANSI_YELLOW, (float)passed_tests / total_tests * 100, __ANSI_RESET);                                                                                      \
     } while (0)
 
 /**
@@ -477,15 +474,15 @@ void __TESTING_RESET_SIGNAL_HANDLERS(void)
  *
  */
 #ifndef TESTING_DECLARE_TEST_SUITE_RUN_TESTS_AS_FUNCTION
-void __TEST_SUITE_RUN_TESTS(TestSuite suite)
+void __CTF_SUITE_RUN_TESTS(__TestSuite suite)
 {
-    __TEST_SUITE_RUN_TESTS_IMPL(suite);
+    __CTF_SUITE_RUN_TESTS_IMPL(suite);
 }
 #else
-#define __TEST_SUITE_RUN_TESTS(suite) __TEST_SUITE_RUN_TESTS_IMPL(suite)
+#define __CTF_SUITE_RUN_TESTS(suite) __CTF_SUITE_RUN_TESTS_IMPL(suite)
 #endif
 
-void __TEST_PROCESS_INIT_IMPL(int argc, char **argv)
+void __CTF_PROCESS_INIT_IMPL(int argc, char **argv)
 {
     int i;
     for (i = 0; i < argc; i++)
@@ -496,7 +493,7 @@ void __TEST_PROCESS_INIT_IMPL(int argc, char **argv)
         }
         else if (strcmp(argv[i], "-as") == 0 || strcmp(argv[i], "--ask-signal") == 0)
         {
-            __testing_handle_signal_ask_user = true;
+            __TESTING_HANDLE_SIGNAL_ask_user = true;
         }
         else if (strcmp(argv[i], "-l") == 0 || strcmp(argv[i], "--log") == 0)
         {
@@ -517,15 +514,15 @@ void __TEST_PROCESS_INIT_IMPL(int argc, char **argv)
             exit(0);
         }
     }
-    __current_test_name = NULL;
-    __current_test_suite_name = NULL;
+    __testing_current_test_name = NULL;
+    __testing_current_test_suite_name = NULL;
     __testing_process_start_time = clock();
     __testing_log_file = fopen(TEST_LOG_FILE_NAME, "w");
     TEST_LOG("C Testing framework (CTF) initialized.");
     TEST_LOG_TIME();
 }
 
-void __TEST_PROCESS_EXIT_IMPL(void)
+void __CTF_PROCESS_EXIT_IMPL(void)
 {
     TEST_LOG("Testing complete. %d suites ran.", __testing_suites_ran);
     clock_t end_time = clock();
@@ -539,37 +536,37 @@ void __TEST_PROCESS_EXIT_IMPL(void)
     exit(0);
 }
 
-void __TEST_SUITE_LINK_FUNC(TestSuite *suite, int (*test_func)(), const char *test_name)
+void __CTF_SUITE_LINK_FUNC(__TestSuite *suite, int (*test_func)(), const char *test_name)
 {
     if (suite->count >= suite->capacity)
     {
         suite->capacity = suite->capacity == 0 ? 1 : suite->capacity * 2;
-        suite->tests = realloc(suite->tests, suite->capacity * sizeof(Test));
+        suite->tests = realloc(suite->tests, suite->capacity * sizeof(__Test));
     }
     suite->tests[suite->count].test_func = test_func;
     suite->tests[suite->count].test_name = test_name;
     suite->count++;
 }
 
-#define __TEST_SUITE_IMPL(name, ...)       \
-    TEST_SUITE_MAKE(name)                  \
-    {                                      \
-        __current_test_suite_name = #name; \
-        int i = 22 + strlen(#name), j = i; \
-        while (i--)                        \
-        {                                  \
-            putchar('+');                  \
-        }                                  \
-        putchar('\n');                     \
-        TEST_LOG_TIME();                   \
-        TEST_BLOCK(__VA_ARGS__);           \
-        TEST_SUITE_END(name);              \
-        i = j;                             \
-        while (i--)                        \
-        {                                  \
-            putchar('-');                  \
-        }                                  \
-        putchar('\n');                     \
+#define __CTF_SUITE_IMPL(name, ...)                \
+    TEST_SUITE_MAKE(name)                          \
+    {                                              \
+        __testing_current_test_suite_name = #name; \
+        int i = 22 + strlen(#name), j = i;         \
+        while (i--)                                \
+        {                                          \
+            putchar('+');                          \
+        }                                          \
+        putchar('\n');                             \
+        TEST_LOG_TIME();                           \
+        TEST_BLOCK(__VA_ARGS__);                   \
+        TEST_SUITE_END(name);                      \
+        i = j;                                     \
+        while (i--)                                \
+        {                                          \
+            putchar('-');                          \
+        }                                          \
+        putchar('\n');                             \
     }
 
 #endif /* _TESTING_FRAMEWORK_H */

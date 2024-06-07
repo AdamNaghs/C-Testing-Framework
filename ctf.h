@@ -257,12 +257,12 @@ char *__CTF_LOG_FILE_NAME = "testing.log";
     ====================================================================================================
 */
 
-#define __CTF_ANSI_RED (__CTF_ANSI_COLOR_SUPPORT() ? "\x1b[31m" : "")
-#define __CTF_ANSI_GREEN (__CTF_ANSI_COLOR_SUPPORT() ? "\x1b[32m" : "")
-#define __CTF_ANSI_YELLOW (__CTF_ANSI_COLOR_SUPPORT() ? "\x1b[33m" : "")
-#define __CTF_ANSI_BLUE (__CTF_ANSI_COLOR_SUPPORT() ? "\x1b[34m" : "")
-#define __CTF_ANSI_UNDERLINE (__CTF_ANSI_COLOR_SUPPORT() ? "\x1b[4m" : "")
-#define __CTF_ANSI_RESET (__CTF_ANSI_COLOR_SUPPORT() ? "\x1b[0m" : "")
+#define __CTF_ANSI_RED __CTF_ANSI_COLOR("\x1b[31m")
+#define __CTF_ANSI_GREEN __CTF_ANSI_COLOR("\x1b[32m")
+#define __CTF_ANSI_YELLOW __CTF_ANSI_COLOR("\x1b[33m")
+#define __CTF_ANSI_BLUE __CTF_ANSI_COLOR("\x1b[34m")
+#define __CTF_ANSI_UNDERLINE __CTF_ANSI_COLOR("\x1b[4m")
+#define __CTF_ANSI_RESET __CTF_ANSI_COLOR("\x1b[0m")
 
 typedef struct
 {
@@ -336,13 +336,10 @@ bool __CTF_ANSI_COLOR_SUPPORT()
     return false;
 }
 
-#define __CTF_FAIL_TEXT()                                                                       \
-    __CTF_LOG("\n\t%sFail in Suite:%s\"%s\"%s, Test:%s\"%s\"%s:%s\n\t\tfile: %s\n\t\tline: %d", \
-              __CTF_ANSI_RED, __CTF_ANSI_YELLOW, __ctf_current_test_suite_name, __CTF_ANSI_RED, __CTF_ANSI_YELLOW, __ctf_current_test_name, __CTF_ANSI_RED, __CTF_ANSI_RESET, __FILE__, __LINE__);
-
-#define __CTF_ASSERT_TEXT(cond)                          \
-    __CTF_LOG("\n\t%sAssertion failed:%s\n\t\tcond: %s", \
-              __CTF_ANSI_RED, __CTF_ANSI_RESET, #cond)
+const char *__CTF_ANSI_COLOR(const char *color)
+{
+    return __CTF_ANSI_COLOR_SUPPORT() ? color : "";
+}
 
 bool __CTF_ASK_USER()
 {
@@ -361,37 +358,44 @@ bool __CTF_ASK_USER()
     return true;
 }
 
+#define __CTF_FAIL_TEXT()                                                                       \
+    __CTF_LOG("\n\t%sFail in Suite:%s\"%s\"%s, Test:%s\"%s\"%s:%s\n\t\tfile: %s\n\t\tline: %d", \
+              __CTF_ANSI_RED, __CTF_ANSI_YELLOW, __ctf_current_test_suite_name, __CTF_ANSI_RED, __CTF_ANSI_YELLOW, __ctf_current_test_name, __CTF_ANSI_RED, __CTF_ANSI_RESET, __FILE__, __LINE__);
+
+#define __CTF_ASSERT_TEXT(cond)                          \
+    __CTF_LOG("\n\t%sAssertion failed:%s\n\t\tcond: %s", \
+              __CTF_ANSI_RED, __CTF_ANSI_RESET, #cond)
+
+
+#define __CTF_LOG_ARGS_COLOR(suite,test) "%s[LOG%s%s%s%s]%s ", __CTF_ANSI_YELLOW, suite ? "/" : "", suite ? __ctf_current_test_suite_name : "", test ? "/" : "", test ? __ctf_current_test_name : "", __CTF_ANSI_RESET
+#define __CTF_LOG_ARGS(suite,test) "[LOG%s%s%s%s] ", suite ? "/" : "", suite ? __ctf_current_test_suite_name : "", test ? "/" : "", test ? __ctf_current_test_name : ""
 /**
  * @brief Takes a filename rather than FILE* because we expect a critial error to occur and always want to ensure that the log is written.
  *
  * @note If __CTF_PROCESS_INIT was called then we will use already opened __ctf_log_file. This enables faster logging.
  *
  */
-#define __CTF_LOG_IMPL(filename, ...) __CTF_LOG_IMPL_FUNC(filename, __VA_ARGS__)
-
-void __CTF_LOG_IMPL_FUNC(char *filename, ...)
-{
-    bool suite = __ctf_current_test_suite_name != NULL;
-    bool test = __ctf_current_test_name != NULL;
-    printf("%s[LOG%s%s%s%s]%s ", __CTF_ANSI_YELLOW, suite ? "/" : "", suite ? __ctf_current_test_suite_name : "", test ? "/" : "", test ? __ctf_current_test_name : "", __CTF_ANSI_RESET);
-    va_list args;
-    va_start(args, filename);
-    char *fmt = va_arg(args, char *);
-    vprintf(fmt, args);
-    putchar('\n');
-    FILE *file = __ctf_log_file ? __ctf_log_file : fopen(filename, "a");
-    bool old_use_colors = __ctf_try_use_colors;
-    __ctf_try_use_colors = false;
-    if (file)
-    {
-        fprintf(file, "[LOG%s%s%s%s] ", suite ? "/" : "", suite ? __ctf_current_test_suite_name : "", test ? "/" : "", test ? __ctf_current_test_name : "");
-        vfprintf(file, fmt, args);
-        fputc('\n', file);
-        if (!__ctf_log_file)
-            fclose(file);
-    }
-    __ctf_try_use_colors = old_use_colors;
-}
+#define __CTF_LOG_IMPL(filename, ...)                                                                                                                                                          \
+    do                                                                                                                                                                                         \
+    {                                                                                                                                                                                          \
+        bool suite = __ctf_current_test_suite_name != NULL;                                                                                                                                    \
+        bool test = __ctf_current_test_name != NULL;                                                                                                                                           \
+        printf(__CTF_LOG_ARGS_COLOR(suite,test)); \
+        printf(__VA_ARGS__);                                                                                                                                                                   \
+        putchar('\n');                                                                                                                                                                         \
+        FILE *file = __ctf_log_file ? __ctf_log_file : fopen(filename, "a");                                                                                                                   \
+        bool old_use_colors = __ctf_try_use_colors;                                                                                                                                            \
+        __ctf_try_use_colors = false;                                                                                                                                                          \
+        if (file)                                                                                                                                                                              \
+        {                                                                                                                                                                                      \
+            fprintf(file, __CTF_LOG_ARGS(suite,test));                               \
+            fprintf(file, __VA_ARGS__);                                                                                                                                                        \
+            fputc('\n', file);                                                                                                                                                                 \
+            if (!__ctf_log_file)                                                                                                                                                               \
+                fclose(file);                                                                                                                                                                  \
+        }                                                                                                                                                                                      \
+        __ctf_try_use_colors = old_use_colors;                                                                                                                                                 \
+    } while (0)
 
 void __CTF_HANDLE_SIGNAL(int sig);
 
@@ -556,7 +560,7 @@ void __CTF_SUITE_LINK_IMPL(__CTF_Test_Suite *suite, int (*test_func)(), const ch
     __CTF_SUITE_MAKE(name)                     \
     {                                          \
         __ctf_current_test_suite_name = #name; \
-        int i = 22 + strlen(#name), j = i;     \
+        int i = 22 + ((sizeof(#name)/sizeof(char)) - 3), j = i;     \
         while (i--)                            \
         {                                      \
             putchar('+');                      \

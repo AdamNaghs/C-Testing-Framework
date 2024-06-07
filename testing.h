@@ -250,7 +250,7 @@ bool __testing_does_terminal_support_ansi_color()
            __ANSI_RED, __ANSI_YELLOW, __current_test_suite_name, __ANSI_RED, __ANSI_YELLOW, __current_test_name, __ANSI_RED, __ANSI_RESET, __FILE__, __LINE__);
 
 #define __TEST_ASSERT_TEXT(cond)                  \
-    printf("%sAssertion failed:%s\n\tcond: %s\n", \
+    printf("%s\tAssertion failed:%s\n\t\tcond: %s\n", \
            __ANSI_RED, __ANSI_RESET, #cond)
 
 typedef struct
@@ -418,10 +418,12 @@ void __TESTING_RESET_SIGNAL_HANDLERS(void)
     } while (0)
 
 /**
- * @brief Expects to receive the name of the actual suite struct.
+ * @brief Defines TEST_SUITE_RUN_TESTS as a function for preventing variable name reuse.
+ * 
+ * @note only declare if your test suite is polluted with local/global variable names.
  *
  */
-#ifndef __TESTING_DECLARE_TEST_SUITE_RUN_TESTS_AS_FUNCTION
+#ifndef TESTING_DECLARE_TEST_SUITE_RUN_TESTS_AS_FUNCTION
 void __TEST_SUITE_RUN_TESTS(TestSuite suite)
 {
     __TEST_SUITE_RUN_TESTS_IMPL(suite);
@@ -430,6 +432,10 @@ void __TEST_SUITE_RUN_TESTS(TestSuite suite)
 #define __TEST_SUITE_RUN_TESTS(suite) __TEST_SUITE_RUN_TESTS_IMPL(suite)
 #endif
 
+/**
+ * @brief Takes a filename rather than FILE* because we expect a critial error to occur and always want to ensure that the log is written.
+ * 
+ */
 #define __TEST_LOG_IMPL(filename, ...)                                                                                                                                         \
     do                                                                                                                                                                         \
     {                                                                                                                                                                          \

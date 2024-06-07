@@ -35,15 +35,20 @@ TEST_MAKE(Vector_Test)
     TEST_ASSERT(int_vec->len == 0);
     int tmp = 5;
     vec_push_back(int_vec, &tmp);
-    TEST_ASSERT(int_vec->len == 1);
-    TEST_ASSERT(*(int *)vec_at(int_vec, 0) == 5);
+    /*If */
+    TEST_ASSERT_CLEAN(int_vec->len == 1, vec_free(int_vec));
+    /* If you need to do more complex things in your clean up you can run pass a closeure by using a a block */
+    TEST_ASSERT_CLEAN(
+        *(int *)vec_at(int_vec, 0) == 5,
+        TEST_BLOCK( /* Could also use TEST_CODE or TEST_CLEAN_FUNC*/
+                   vec_free(int_vec);));
     vec_free(int_vec);
     TEST_PASS();
 }
 /* This is another way of defining a test suite, which just also logs the time and some extra info
     If you only have one test you dont need semi colons, otherwise you do.
 */
-TEST_SUITE(Vec,TEST_SUITE_LINK(Vec, Vector_Test))
+TEST_SUITE(Vec, TEST_SUITE_LINK(Vec, Vector_Test))
 
 #include "../Map/map.h"
 #include "../Map/map.c"
@@ -63,11 +68,14 @@ TEST_MAKE(Map_Test)
     map_add(int_map, &tmp, &tmp);
     TEST_ASSERT(int_map->length == 1);
     int *tmp2 = (int *)map_get(int_map, &tmp);
+    /* There are a few variations of assert which let you log or clean or do both */
     TEST_ASSERT_CLEAN_LOG(tmp2 != NULL, map_free(int_map), "Failed to get value from map");
+    /* Unfortunately when passing a complex cleanup we need to wrap it in TEST_CLEAN_FUNC or a similar macro to ensure that all the code is ran */
     TEST_ASSERT_CLEAN_LOG(*tmp2 == tmp,
                           TEST_CLEAN_FUNC(
                               {
-                                  int i, j;
+                                  int i = 0;
+                                  i += 1;
                                   map_free(int_map);
                               }),
                           "Value in map is not correct");
@@ -96,7 +104,7 @@ TEST_MAKE(Map_Malloc_Test)
     TEST_PASS();
 }
 
-/* The second arg of TEST_SUITE can be ran like a closure so you can do anything you want on top of linking tests. */
+/* The second arg of TEST_SUITE can be ran like a closure so you can do anything you want on top of linking tests. The second arg could also be a TEST_BLOCK */
 TEST_SUITE(
     Map,
     {
@@ -109,6 +117,7 @@ TEST_MAKE(Null_Deref)
     TEST_LOG("This test should segfault");
     volatile int *ptr = NULL;
     int i = *ptr;
+    i++;
     TEST_PASS();
 }
 
@@ -132,12 +141,12 @@ int main(int argc, char **argv)
 {
     /* Optional to use, but will allow for command line args to control aspects of the test process*/
     TEST_PROCESS_INIT();
-        TEST_LOG("Running tests...");
-        TEST_SUITE_RUN(Example);
-        TEST_SUITE_RUN(Vec);
-        TEST_SUITE_RUN(Map);
-        TEST_LOG("The following suite should fail");
-        TEST_SUITE_RUN(Intentional_Fail);
+    TEST_LOG("Running tests...");
+    TEST_SUITE_RUN(Example);
+    TEST_SUITE_RUN(Vec);
+    TEST_SUITE_RUN(Map);
+    TEST_LOG("The following suite should fail");
+    TEST_SUITE_RUN(Intentional_Fail);
     /* Only needs to be used at the end of main if INIT was called otherwise its optional */
     TEST_PROCESS_EXIT();
     return 0;

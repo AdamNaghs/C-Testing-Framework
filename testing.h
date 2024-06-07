@@ -108,24 +108,24 @@ char *TEST_LOG_FILE_NAME = "testing_log.txt";
 
 /**
  * @brief If the condition is not met, the clean_func is called and the test fails.
- * 
+ *
  * @note doesnt require second arg to be TEST_BLOCK or TEST_CLEAN_FUNC but it should be.
  *
  */
-#define TEST_ASSERT_CLEAN(cond, ...) \
-    do                                      \
-    {                                       \
-        if (!(cond))                        \
-        {                                   \
-            __TEST_ASSERT_TEXT(cond);       \
-            __VA_ARGS__;                     \
-            TEST_FAIL();                    \
-        }                                   \
+#define TEST_ASSERT_CLEAN(cond, ...)  \
+    do                                \
+    {                                 \
+        if (!(cond))                  \
+        {                             \
+            __TEST_ASSERT_TEXT(cond); \
+            __VA_ARGS__;              \
+            TEST_FAIL();              \
+        }                             \
     } while (0)
 
 /**
  * @brief If the condition is not met, the clean_func is called and the test fails.
- * 
+ *
  * @note Requires second arg to be TEST_BLOCK or TEST_CLEAN_FUNC.
  *
  */
@@ -147,28 +147,7 @@ char *TEST_LOG_FILE_NAME = "testing_log.txt";
  * @param name Name of the test suite.
  * @param ... Code to run in the test suite, optionally enclose in semicolons. This is where you link your tests to the suite.
  */
-#define TEST_SUITE(name, ...)                                                                                           \
-    TEST_SUITE_MAKE(name)                                                                                               \
-    {                                                                                                                   \
-        clock_t suite_start_time = clock();                                                                             \
-        __current_test_suite_name = #name;                                                                              \
-        int i = 22 + strlen(#name);                                                                                     \
-        while (i--)                                                                                                     \
-        {                                                                                                               \
-            putchar('=');                                                                                               \
-        }                                                                                                               \
-        putchar('\n');                                                                                                  \
-        TEST_LOG_TIME();                                                                                                \
-        TEST_BLOCK(__VA_ARGS__);                                                                                        \
-        clock_t test_start_time = clock();                                                                              \
-        TEST_SUITE_END(name);                                                                                           \
-        clock_t end_time = clock();                                                                                     \
-        clock_t suite_runtime = end_time - suite_start_time;                                                            \
-        clock_t test_runtime = end_time - test_start_time;                                                              \
-        float suite_runtime_sec = (double)(suite_runtime) / CLOCKS_PER_SEC;                                             \
-        float test_runtime_sec = (double)(test_runtime) / CLOCKS_PER_SEC;                                               \
-        TEST_LOG("Suite \"%s\" completed in %fs, tests completed in %fs.", #name, suite_runtime_sec, test_runtime_sec); \
-    }
+#define TEST_SUITE(name, ...) __TEST_SUITE_IMPL(name, __VA_ARGS__)
 
 /**
  * @brief Used inside of a test suite to link a test to the suite.
@@ -367,6 +346,10 @@ void __TESTING_RESET_SIGNAL_HANDLERS(void);
         putchar('\n');                                                                                                                                                         \
     } while (0)
 
+#define __TESTING_SIGBUFF_SIZE 60
+#define __TESTING_ERRBUFF_SIZE (__TESTING_SIGBUFF_SIZE + 150)
+#define __TESTING_BUFF_SIZE (__TESTING_ERRBUFF_SIZE + 150)
+
 /* Signal handling functions */
 void __testing_handle_signal(int sig)
 {
@@ -388,17 +371,16 @@ void __testing_handle_signal(int sig)
     default:
         signal_name = "Unknown signal";
     }
-    const size_t max_buff_size = 1000;
-    char buff[1000];
+    char sigbuff[__TESTING_SIGBUFF_SIZE], errbuff[__TESTING_ERRBUFF_SIZE], buff[__TESTING_BUFF_SIZE];
 
-    snprintf(buff, max_buff_size, "\n\tCaught signal: %s (%d)\n", signal_name, sig);
+    snprintf(sigbuff, __TESTING_SIGBUFF_SIZE, "\n\tCaught signal: %s (%d)\n", signal_name, sig);
     if (__current_test_name != NULL)
     {
-        snprintf(buff, max_buff_size, "%s\tError occurred during test: %s\n", buff, __current_test_name);
+        snprintf(errbuff, __TESTING_ERRBUFF_SIZE, "%s\tError occurred during test: %s\n", sigbuff, __current_test_name);
     }
     if (__current_test_suite_name != NULL)
     {
-        snprintf(buff, max_buff_size, "%s\tIn test suite: %s", buff, __current_test_suite_name);
+        snprintf(buff, __TESTING_BUFF_SIZE, "%s\tIn test suite: %s", errbuff, __current_test_suite_name);
     }
     TEST_LOG("%s%s%s", __ANSI_RED, buff, __ANSI_RESET);
     /*  Reset signal handlers to default */
@@ -460,8 +442,6 @@ void __TESTING_RESET_SIGNAL_HANDLERS(void)
                 }                                                                                                                                                    \
                 else                                                                                                                                                 \
                 {                                                                                                                                                    \
-                    clock_t end = clock();                                                                                                                           \
-                    double elapsed_time = (double)(end - start) / CLOCKS_PER_SEC;                                                                                    \
                     printf("%sTest \"%s\" failed.\n%s", __ANSI_RED, __current_test_name, __ANSI_RESET);                                                              \
                 }                                                                                                                                                    \
             }                                                                                                                                                        \
@@ -505,7 +485,8 @@ void __TEST_SUITE_RUN_TESTS(TestSuite suite)
 
 void __TEST_PROCESS_INIT_IMPL(int argc, char **argv)
 {
-    for (int i = 0; i < argc; i++)
+    int i;
+    for (i = 0; i < argc; i++)
     {
         if (strcmp(argv[i], "-nc") == 0 || strcmp(argv[i], "-no-color") == 0)
         {
@@ -542,6 +523,7 @@ void __TEST_PROCESS_EXIT_IMPL(void)
         fclose(__testing_log_file);
     }
     TEST_LOG("Testing complete. %d suites ran.", __testing_suites_ran);
+    exit(0);
 }
 
 void __TEST_SUITE_LINK_FUNC(TestSuite *suite, int (*test_func)(), const char *test_name)
@@ -555,5 +537,28 @@ void __TEST_SUITE_LINK_FUNC(TestSuite *suite, int (*test_func)(), const char *te
     suite->tests[suite->count].test_name = test_name;
     suite->count++;
 }
+
+#define __TEST_SUITE_IMPL(name, ...)                                                                                    \
+    TEST_SUITE_MAKE(name)                                                                                               \
+    {                                                                                                                   \
+        clock_t suite_start_time = clock();                                                                             \
+        __current_test_suite_name = #name;                                                                              \
+        int i = 22 + strlen(#name);                                                                                     \
+        while (i--)                                                                                                     \
+        {                                                                                                               \
+            putchar('=');                                                                                               \
+        }                                                                                                               \
+        putchar('\n');                                                                                                  \
+        TEST_LOG_TIME();                                                                                                \
+        TEST_BLOCK(__VA_ARGS__);                                                                                        \
+        clock_t test_start_time = clock();                                                                              \
+        TEST_SUITE_END(name);                                                                                           \
+        clock_t end_time = clock();                                                                                     \
+        clock_t suite_runtime = end_time - suite_start_time;                                                            \
+        clock_t test_runtime = end_time - test_start_time;                                                              \
+        float suite_runtime_sec = (double)(suite_runtime) / CLOCKS_PER_SEC;                                             \
+        float test_runtime_sec = (double)(test_runtime) / CLOCKS_PER_SEC;                                               \
+        TEST_LOG("Suite \"%s\" completed in %fs, tests completed in %fs.", #name, suite_runtime_sec, test_runtime_sec); \
+    }
 
 #endif /* _TESTING_FRAMEWORK_H */

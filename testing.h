@@ -322,14 +322,19 @@ void __TESTING_RESET_SIGNAL_HANDLERS(void);
 
 /**
  * @brief Takes a filename rather than FILE* because we expect a critial error to occur and always want to ensure that the log is written.
+ * 
+ * @note If TEST_PROCESS_INIT was called then we will use already opened __testing_log_file. This enables faster logging. 
  *
  */
 #define __TEST_LOG_IMPL(filename, ...)                                                                                                                                         \
     do                                                                                                                                                                         \
     {                                                                                                                                                                          \
-        FILE *file = __testing_log_file ? __testing_log_file : fopen(filename, "a");                                                                                           \
         bool suite = __current_test_suite_name != NULL;                                                                                                                        \
         bool test = __current_test_name != NULL;                                                                                                                               \
+        printf("%s[LOG%s%s%s%s]%s ", __ANSI_YELLOW, suite ? "/" : "", suite ? __current_test_suite_name : "", test ? "/" : "", test ? __current_test_name : "", __ANSI_RESET); \
+        printf(__VA_ARGS__);                                                                                                                                                   \
+        putchar('\n');                                                                                                                                                         \
+        FILE *file = __testing_log_file ? __testing_log_file : fopen(filename, "a");                                                                                           \
         bool old_use_colors = __testing_try_use_colors;                                                                                                                        \
         __testing_try_use_colors = false;                                                                                                                                      \
         if (file)                                                                                                                                                              \
@@ -341,9 +346,6 @@ void __TESTING_RESET_SIGNAL_HANDLERS(void);
                 fclose(file);                                                                                                                                                  \
         }                                                                                                                                                                      \
         __testing_try_use_colors = old_use_colors;                                                                                                                             \
-        printf("%s[LOG%s%s%s%s]%s ", __ANSI_YELLOW, suite ? "/" : "", suite ? __current_test_suite_name : "", test ? "/" : "", test ? __current_test_name : "", __ANSI_RESET); \
-        printf(__VA_ARGS__);                                                                                                                                                   \
-        putchar('\n');                                                                                                                                                         \
     } while (0)
 
 #define __TESTING_SIGBUFF_SIZE 60

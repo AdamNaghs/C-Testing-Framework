@@ -22,6 +22,7 @@
 #include <setjmp.h>
 #include <time.h>
 #include <string.h>
+#include <stdarg.h>
 
 /* Use anywhere to log to CTF_LOG_FILE_NAME */
 #define CTF_LOG(...) __CTF_LOG_IMPL(CTF_LOG_FILE_NAME, __VA_ARGS__)
@@ -256,6 +257,13 @@ char *__CTF_LOG_FILE_NAME = "testing.log";
     ====================================================================================================
 */
 
+#define __CTF_ANSI_RED (__CTF_ANSI_COLOR_SUPPORT() ? "\x1b[31m" : "")
+#define __CTF_ANSI_GREEN (__CTF_ANSI_COLOR_SUPPORT() ? "\x1b[32m" : "")
+#define __CTF_ANSI_YELLOW (__CTF_ANSI_COLOR_SUPPORT() ? "\x1b[33m" : "")
+#define __CTF_ANSI_BLUE (__CTF_ANSI_COLOR_SUPPORT() ? "\x1b[34m" : "")
+#define __CTF_ANSI_UNDERLINE (__CTF_ANSI_COLOR_SUPPORT() ? "\x1b[4m" : "")
+#define __CTF_ANSI_RESET (__CTF_ANSI_COLOR_SUPPORT() ? "\x1b[0m" : "")
+
 typedef struct
 {
     int (*test_func)();
@@ -292,7 +300,7 @@ bool __ctf_handle_signal_ask_user = false;
 bool __ctf_try_use_colors = true;
 
 /* Meant to be crossplatform */
-bool __CTF_ANSI_SUPPORT()
+bool __CTF_ANSI_COLOR_SUPPORT()
 {
     if (!__ctf_try_use_colors)
     {
@@ -328,13 +336,6 @@ bool __CTF_ANSI_SUPPORT()
     return false;
 }
 
-#define __CTF_ANSI_RED (__CTF_ANSI_SUPPORT() ? "\x1b[31m" : "")
-#define __CTF_ANSI_GREEN (__CTF_ANSI_SUPPORT() ? "\x1b[32m" : "")
-#define __CTF_ANSI_YELLOW (__CTF_ANSI_SUPPORT() ? "\x1b[33m" : "")
-#define __CTF_ANSI_BLUE (__CTF_ANSI_SUPPORT() ? "\x1b[34m" : "")
-#define __CTF_ANSI_UNDERLINE (__CTF_ANSI_SUPPORT() ? "\x1b[4m" : "")
-#define __CTF_ANSI_RESET (__CTF_ANSI_SUPPORT() ? "\x1b[0m" : "")
-
 #define __CTF_FAIL_TEXT()                                                                       \
     __CTF_LOG("\n\t%sFail in Suite:%s\"%s\"%s, Test:%s\"%s\"%s:%s\n\t\tfile: %s\n\t\tline: %d", \
               __CTF_ANSI_RED, __CTF_ANSI_YELLOW, __ctf_current_test_suite_name, __CTF_ANSI_RED, __CTF_ANSI_YELLOW, __ctf_current_test_name, __CTF_ANSI_RED, __CTF_ANSI_RESET, __FILE__, __LINE__);
@@ -366,27 +367,31 @@ bool __CTF_ASK_USER()
  * @note If __CTF_PROCESS_INIT was called then we will use already opened __ctf_log_file. This enables faster logging.
  *
  */
-#define __CTF_LOG_IMPL(filename, ...)                                                                                                                                                          \
-    do                                                                                                                                                                                         \
-    {                                                                                                                                                                                          \
-        bool suite = __ctf_current_test_suite_name != NULL;                                                                                                                                    \
-        bool test = __ctf_current_test_name != NULL;                                                                                                                                           \
-        printf("%s[LOG%s%s%s%s]%s ", __CTF_ANSI_YELLOW, suite ? "/" : "", suite ? __ctf_current_test_suite_name : "", test ? "/" : "", test ? __ctf_current_test_name : "", __CTF_ANSI_RESET); \
-        printf(__VA_ARGS__);                                                                                                                                                                   \
-        putchar('\n');                                                                                                                                                                         \
-        FILE *file = __ctf_log_file ? __ctf_log_file : fopen(filename, "a");                                                                                                                   \
-        bool old_use_colors = __ctf_try_use_colors;                                                                                                                                            \
-        __ctf_try_use_colors = false;                                                                                                                                                          \
-        if (file)                                                                                                                                                                              \
-        {                                                                                                                                                                                      \
-            fprintf(file, "[LOG%s%s%s%s] ", suite ? "/" : "", suite ? __ctf_current_test_suite_name : "", test ? "/" : "", test ? __ctf_current_test_name : "");                               \
-            fprintf(file, __VA_ARGS__);                                                                                                                                                        \
-            fputc('\n', file);                                                                                                                                                                 \
-            if (!__ctf_log_file)                                                                                                                                                               \
-                fclose(file);                                                                                                                                                                  \
-        }                                                                                                                                                                                      \
-        __ctf_try_use_colors = old_use_colors;                                                                                                                                                 \
-    } while (0)
+#define __CTF_LOG_IMPL(filename, ...) __CTF_LOG_IMPL_FUNC(filename, __VA_ARGS__)
+
+void __CTF_LOG_IMPL_FUNC(char *filename, ...)
+{
+    bool suite = __ctf_current_test_suite_name != NULL;
+    bool test = __ctf_current_test_name != NULL;
+    printf("%s[LOG%s%s%s%s]%s ", __CTF_ANSI_YELLOW, suite ? "/" : "", suite ? __ctf_current_test_suite_name : "", test ? "/" : "", test ? __ctf_current_test_name : "", __CTF_ANSI_RESET);
+    va_list args;
+    va_start(args, filename);
+    char *fmt = va_arg(args, char *);
+    vprintf(fmt, args);
+    putchar('\n');
+    FILE *file = __ctf_log_file ? __ctf_log_file : fopen(filename, "a");
+    bool old_use_colors = __ctf_try_use_colors;
+    __ctf_try_use_colors = false;
+    if (file)
+    {
+        fprintf(file, "[LOG%s%s%s%s] ", suite ? "/" : "", suite ? __ctf_current_test_suite_name : "", test ? "/" : "", test ? __ctf_current_test_name : "");
+        vfprintf(file, fmt, args);
+        fputc('\n', file);
+        if (!__ctf_log_file)
+            fclose(file);
+    }
+    __ctf_try_use_colors = old_use_colors;
+}
 
 void __CTF_HANDLE_SIGNAL(int sig);
 

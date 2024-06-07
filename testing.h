@@ -195,7 +195,7 @@ char *TEST_LOG_FILE_NAME = "testing_log.txt";
  */
 #define TEST_PROCESS_INIT() __TEST_PROCESS_INIT_IMPL(argc, argv)
 
-#define TEST_PROCESS_END() __TEST_PROCESS_END_IMPL()
+#define TEST_PROCESS_EXIT() __TEST_PROCESS_EXIT_IMPL()
 
 /*
     If you use TEST_SUITE you dont need to use the following macros.
@@ -535,7 +535,7 @@ void __TEST_PROCESS_INIT_IMPL(int argc, char **argv)
     TEST_LOG_TIME();
 }
 
-void __TEST_PROCESS_END_IMPL(void)
+void __TEST_PROCESS_EXIT_IMPL(void)
 {
     if (__testing_log_file)
     {

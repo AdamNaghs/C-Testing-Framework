@@ -21,6 +21,7 @@
 #include <signal.h>
 #include <setjmp.h>
 #include <time.h>
+#include <string.h>
 
 char *TEST_LOG_FILE_NAME = "testing_log.txt";
 
@@ -30,6 +31,18 @@ char *TEST_LOG_FILE_NAME = "testing_log.txt";
  * @note Also writes output to a log file.
  */
 #define TEST_LOG(...) __TEST_LOG_IMPL(TEST_LOG_FILE_NAME, __VA_ARGS__)
+
+#define TEST_LOG_TIME()                                          \
+    do                                                           \
+    {                                                            \
+        time_t t;                                                \
+        time(&t);                                                \
+        char buff[70];                                           \
+        if (strftime(buff, sizeof buff, "%A %c", localtime(&t))) \
+            TEST_LOG(buff);                                      \
+        else                                                     \
+            TEST_LOG("Could not get date and time info.");       \
+    } while (0)
 
 /**
  * @brief Used at the start of a test function to define the test.
@@ -91,23 +104,29 @@ char *TEST_LOG_FILE_NAME = "testing_log.txt";
  */
 #define TEST_CLEAN_FUNC(...) TEST_BLOCK(__VA_ARGS__)
 
+#define TEST_CODE(...) TEST_BLOCK(__VA_ARGS__)
+
 /**
  * @brief If the condition is not met, the clean_func is called and the test fails.
+ * 
+ * @note doesnt require second arg to be TEST_BLOCK or TEST_CLEAN_FUNC but it should be.
  *
  */
-#define TEST_ASSERT_CLEAN(cond, clean_func) \
+#define TEST_ASSERT_CLEAN(cond, ...) \
     do                                      \
     {                                       \
         if (!(cond))                        \
         {                                   \
             __TEST_ASSERT_TEXT(cond);       \
-            clean_func;                     \
+            __VA_ARGS__;                     \
             TEST_FAIL();                    \
         }                                   \
     } while (0)
 
 /**
  * @brief If the condition is not met, the clean_func is called and the test fails.
+ * 
+ * @note Requires second arg to be TEST_BLOCK or TEST_CLEAN_FUNC.
  *
  */
 #define TEST_ASSERT_CLEAN_LOG(cond, clean_func, ...) \
@@ -139,13 +158,7 @@ char *TEST_LOG_FILE_NAME = "testing_log.txt";
             putchar('=');                                                                                               \
         }                                                                                                               \
         putchar('\n');                                                                                                  \
-        time_t t;                                                                                                       \
-        time(&t);                                                                                                       \
-        char buff[70];                                                                                                  \
-        if (strftime(buff, sizeof buff, "%A %c", localtime(&t)))                                                        \
-            TEST_LOG(buff);                                                                                             \
-        else                                                                                                            \
-            TEST_LOG("Could not get date and time info.");                                                              \
+        TEST_LOG_TIME();                                                                                                \
         TEST_BLOCK(__VA_ARGS__);                                                                                        \
         clock_t test_start_time = clock();                                                                              \
         TEST_SUITE_END(name);                                                                                           \
@@ -161,18 +174,7 @@ char *TEST_LOG_FILE_NAME = "testing_log.txt";
  * @brief Used inside of a test suite to link a test to the suite.
  *
  */
-#define TEST_SUITE_LINK(__suite, test)                                                                             \
-    do                                                                                                             \
-    {                                                                                                              \
-        if ((__suite##_suite).count >= (__suite##_suite).capacity)                                                 \
-        {                                                                                                          \
-            (__suite##_suite).capacity = (__suite##_suite).capacity == 0 ? 1 : (__suite##_suite).capacity * 2;     \
-            (__suite##_suite).tests = realloc((__suite##_suite).tests, (__suite##_suite).capacity * sizeof(Test)); \
-        }                                                                                                          \
-        (__suite##_suite).tests[(__suite##_suite).count].test_func = test##_func;                                  \
-        (__suite##_suite).tests[(__suite##_suite).count].test_name = #test;                                        \
-        (__suite##_suite).count++;                                                                                 \
-    } while (0)
+#define TEST_SUITE_LINK(__suite, test) __TEST_SUITE_LINK_FUNC(&__suite##_suite, test##_func, #test)
 
 /**
  * @brief Call this macro to run a test suite.
@@ -183,8 +185,17 @@ char *TEST_LOG_FILE_NAME = "testing_log.txt";
     {                                         \
         __TESTING_REGISTER_SIGNAL_HANDLERS(); \
         name##_suite_func();                  \
+        __testing_suites_ran++;               \
         __TESTING_RESET_SIGNAL_HANDLERS();    \
     } while (0)
+
+/**
+ * @brief Use in a main function that has argv and argc to alter the some aspects of the testing framework.
+ *
+ */
+#define TEST_PROCESS_INIT() __TEST_PROCESS_INIT_IMPL(argc, argv)
+
+#define TEST_PROCESS_END() __TEST_PROCESS_END_IMPL()
 
 /*
     If you use TEST_SUITE you dont need to use the following macros.
@@ -222,7 +233,7 @@ char *TEST_LOG_FILE_NAME = "testing_log.txt";
 bool __testing_try_use_colors = true;
 
 /* Meant to be crossplatform */
-bool __testing_does_terminal_support_ansi_color()
+bool __testing_ansi_support()
 {
     if (!__testing_try_use_colors)
     {
@@ -264,12 +275,12 @@ bool __testing_does_terminal_support_ansi_color()
     return false;
 }
 
-#define __ANSI_RED (__testing_does_terminal_support_ansi_color() ? "\x1b[31m" : "")
-#define __ANSI_GREEN (__testing_does_terminal_support_ansi_color() ? "\x1b[32m" : "")
-#define __ANSI_YELLOW (__testing_does_terminal_support_ansi_color() ? "\x1b[33m" : "")
-#define __ANSI_BLUE (__testing_does_terminal_support_ansi_color() ? "\x1b[34m" : "")
-#define __ANSI_UNDERLINE (__testing_does_terminal_support_ansi_color() ? "\x1b[4m" : "")
-#define __ANSI_RESET (__testing_does_terminal_support_ansi_color() ? "\x1b[0m" : "")
+#define __ANSI_RED (__testing_ansi_support() ? "\x1b[31m" : "")
+#define __ANSI_GREEN (__testing_ansi_support() ? "\x1b[32m" : "")
+#define __ANSI_YELLOW (__testing_ansi_support() ? "\x1b[33m" : "")
+#define __ANSI_BLUE (__testing_ansi_support() ? "\x1b[34m" : "")
+#define __ANSI_UNDERLINE (__testing_ansi_support() ? "\x1b[4m" : "")
+#define __ANSI_RESET (__testing_ansi_support() ? "\x1b[0m" : "")
 
 #define __TEST_FAIL_TEXT()                                                                     \
     TEST_LOG("\n\t%sFail in Suite:%s\"%s\"%s, Test:%s\"%s\"%s:%s\n\t\tfile: %s\n\t\tline: %d", \
@@ -296,8 +307,12 @@ typedef struct
 char *__current_test_suite_name = NULL;
 char *__current_test_name = NULL;
 
+unsigned int __testing_suites_ran = 0;
+
 jmp_buf __testing_env;
 volatile sig_atomic_t __signal_caught = 0;
+
+FILE *__testing_log_file = NULL;
 
 /**
  * @brief Set to true to ask the user if they want to continue testing after a signal is caught.
@@ -333,7 +348,7 @@ void __TESTING_RESET_SIGNAL_HANDLERS(void);
 #define __TEST_LOG_IMPL(filename, ...)                                                                                                                                         \
     do                                                                                                                                                                         \
     {                                                                                                                                                                          \
-        FILE *file = fopen(filename, "a");                                                                                                                                     \
+        FILE *file = __testing_log_file ? __testing_log_file : fopen(filename, "a");                                                                                           \
         bool suite = __current_test_suite_name != NULL;                                                                                                                        \
         bool test = __current_test_name != NULL;                                                                                                                               \
         bool old_use_colors = __testing_try_use_colors;                                                                                                                        \
@@ -343,7 +358,8 @@ void __TESTING_RESET_SIGNAL_HANDLERS(void);
             fprintf(file, "[LOG%s%s%s%s] ", suite ? "/" : "", suite ? __current_test_suite_name : "", test ? "/" : "", test ? __current_test_name : "");                       \
             fprintf(file, __VA_ARGS__);                                                                                                                                        \
             fputc('\n', file);                                                                                                                                                 \
-            fclose(file);                                                                                                                                                      \
+            if (!__testing_log_file)                                                                                                                                           \
+                fclose(file);                                                                                                                                                  \
         }                                                                                                                                                                      \
         __testing_try_use_colors = old_use_colors;                                                                                                                             \
         printf("%s[LOG%s%s%s%s]%s ", __ANSI_YELLOW, suite ? "/" : "", suite ? __current_test_suite_name : "", test ? "/" : "", test ? __current_test_name : "", __ANSI_RESET); \
@@ -486,5 +502,58 @@ void __TEST_SUITE_RUN_TESTS(TestSuite suite)
 #else
 #define __TEST_SUITE_RUN_TESTS(suite) __TEST_SUITE_RUN_TESTS_IMPL(suite)
 #endif
+
+void __TEST_PROCESS_INIT_IMPL(int argc, char **argv)
+{
+    for (int i = 0; i < argc; i++)
+    {
+        if (strcmp(argv[i], "-nc") == 0 || strcmp(argv[i], "-no-color") == 0)
+        {
+            __testing_try_use_colors = false;
+            continue;
+        }
+
+        if (strcmp(argv[i], "-as") == 0 || strcmp(argv[i], "--ask-signal") == 0)
+        {
+            __testing_handle_signal_ask_user = true;
+        }
+
+        if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0)
+        {
+            printf("Usage: %s [-nc|-no-color] [-h|-help]\n", argv[0]);
+            printf("Options:\n");
+            printf("\t-nc, -no-color\t\tDisable colored output.\n");
+            printf("\t-as, --ask-signal\tAsk the user if they want to continue testing after a signal is caught.\n");
+            printf("\t-h, -help\t\tShow this help message.\n");
+            exit(0);
+        }
+    }
+    __current_test_name = NULL;
+    __current_test_suite_name = NULL;
+    __testing_log_file = fopen(TEST_LOG_FILE_NAME, "w");
+    TEST_LOG("C Testing framework (CTF) initialized.");
+    TEST_LOG_TIME();
+}
+
+void __TEST_PROCESS_END_IMPL(void)
+{
+    if (__testing_log_file)
+    {
+        fclose(__testing_log_file);
+    }
+    TEST_LOG("Testing complete. %d suites ran.", __testing_suites_ran);
+}
+
+void __TEST_SUITE_LINK_FUNC(TestSuite *suite, int (*test_func)(), const char *test_name)
+{
+    if (suite->count >= suite->capacity)
+    {
+        suite->capacity = suite->capacity == 0 ? 1 : suite->capacity * 2;
+        suite->tests = realloc(suite->tests, suite->capacity * sizeof(Test));
+    }
+    suite->tests[suite->count].test_func = test_func;
+    suite->tests[suite->count].test_name = test_name;
+    suite->count++;
+}
 
 #endif /* _TESTING_FRAMEWORK_H */

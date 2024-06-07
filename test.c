@@ -2,7 +2,7 @@
 #include <stdlib.h>
 
 /* Define tests */
-TEST_MAKE(test_example1)
+TEST_MAKE(test_example)
 {
     int a = 5;
     int b = 10;
@@ -10,7 +10,7 @@ TEST_MAKE(test_example1)
     TEST_PASS();
 }
 
-TEST_MAKE(test_example2)
+TEST_MAKE(test_fail)
 {
     int x = 7;
     TEST_ASSERT(x > 10); /* This will fail */
@@ -19,8 +19,8 @@ TEST_MAKE(test_example2)
 
 TEST_SUITE_MAKE(Example)
 {
-    TEST_SUITE_LINK(Example, test_example1);
-    TEST_SUITE_LINK(Example, test_example2);
+    TEST_SUITE_LINK(Example, test_example);
+    TEST_SUITE_LINK(Example, test_fail);
     TEST_SUITE_END(Example);
 }
 
@@ -49,15 +49,29 @@ TEST_SUITE_MAKE(Vec)
 #include "../Map/map.h"
 #include "../Map/map.c"
 
+int int_map_cmp_int(const void *key1, const void *key2)
+{
+    return *(int *)key1 - *(int *)key2;
+}
+
 TEST_MAKE(Map_Test)
 {
     Map *int_map = MAP(int, int);
+    int_map->type.key_cmp = int_map_cmp_int;
     TEST_ASSERT(int_map != NULL);
     TEST_ASSERT(int_map->length == 0);
     int tmp = 5;
     map_add(int_map, &tmp, &tmp);
     TEST_ASSERT(int_map->length == 1);
-    TEST_ASSERT(*(int *)map_get(int_map, &tmp) == tmp);
+    int *tmp2 = (int *)map_get(int_map, &tmp);
+    TEST_ASSERT_CLEAN_MSG(tmp2 != NULL, map_free(int_map), "Failed to get value from map");
+    TEST_ASSERT_CLEAN_MSG(*tmp2 == tmp,
+                          TEST_CLEAN_FUNC(
+                              {
+                                  int i, j;
+                                  map_free(int_map);
+                              }),
+                          "Value in map is not correct");
     map_free(int_map);
     TEST_PASS();
 }
@@ -92,7 +106,7 @@ TEST_SUITE_MAKE(Map)
 
 TEST_MAKE(Null_Deref)
 {
-    int *ptr = NULL;
+    volatile int *ptr = NULL;
     int i = *ptr;
     TEST_PASS();
 }
@@ -105,12 +119,10 @@ TEST_SUITE_MAKE(Intentional_Fail)
 
 int main()
 {
+    /* __testing_handle_signal_ask_user = 1; */
     TEST_SUITE_RUN(Example);
     TEST_SUITE_RUN(Vec);
     TEST_SUITE_RUN(Map);
     TEST_SUITE_RUN(Intentional_Fail);
     return 0;
 }
-
-
-

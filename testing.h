@@ -89,6 +89,15 @@
     } while (0)
 
 /**
+ * @brief Allows to run multiple statements in a block.
+ *
+ */
+#define TEST_CLEAN_FUNC(...) \
+    {                        \
+        __VA_ARGS__          \
+    }
+
+/**
  * @brief If the condition is not met, the clean_func is called and the test fails.
  *
  */
@@ -269,6 +278,7 @@ volatile sig_atomic_t __signal_caught = 0;
 /**
  * @brief Set to true to ask the user if they want to continue testing after a signal is caught.
  *
+ * @note When enabled, if you are running the test program from a debugger it may cause the program to hang.
  */
 bool __testing_handle_signal_ask_user = false;
 
@@ -278,7 +288,7 @@ bool __testing_ask_user()
     char c = 0;
     while (c != 'y' && c != 'n' && c != 'Y' && c != 'N' && c != EOF)
     {
-        printf("(y/n): ");
+        printf("[Y/y|N/n]: ");
         c = getchar();
         fflush(stdin);
     }
@@ -340,7 +350,6 @@ void __testing_handle_signal(int sig)
     /* Jump back to tests */
     longjmp(__testing_env, 1);
 }
-
 
 /* Register signal handlers macro */
 void __TESTING_REGISTER_SIGNAL_HANDLERS(void)

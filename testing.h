@@ -5,7 +5,7 @@
  * @file testing.h
  * @author your name (you@domain.com)
  * @brief Single header testing framework for C.
- * @version 0.1
+ * @version 0.2
  * @date 2024-06-06
  *
  * @copyright Copyright (c) 2024

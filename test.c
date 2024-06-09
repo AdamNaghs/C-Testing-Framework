@@ -21,6 +21,7 @@ TEST_MAKE(test_fail)
 /* This is one way of defining a test suite. */
 TEST_SUITE_MAKE(Example)
 {
+    TEST_SUITE_INIT(Example);
     TEST_SUITE_LINK(Example, test_example);
     TEST_SUITE_LINK(Example, test_fail);
     TEST_SUITE_END(Example);

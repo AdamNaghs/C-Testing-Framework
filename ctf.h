@@ -45,8 +45,10 @@
 /* Use to create a suite */
 #define CTF_SUITE(name, ...) __CTF_SUITE(name, __VA_ARGS__)
 #define CTF_SUITE_MAKE(name) __CTF_SUITE_MAKE(name)
+#define CTF_SUITE_INIT(name) __CTF_SUITE_INIT(name)
 /* Use in CTF_SUITE or in CTF_SUITE_MAKE */
 #define CTF_SUITE_LINK(__suite, test) __CTF_SUITE_LINK(__suite, test)
+#define CTF_LINK(__suite, test) __CTF_SUITE_LINK(__suite, test)
 #define CTF_SUITE_END(name) __CTF_SUITE_END(name)
 /* Use in main function */
 #define CTF_SUITE_RUN(name) __CTF_SUITE_RUN(name)
@@ -84,6 +86,7 @@
 #define TEST_BLOCK(...) __CTF_BLOCK(__VA_ARGS__)
 /* Use to create a suite */
 #define TEST_SUITE(name, ...) __CTF_SUITE(name, __VA_ARGS__)
+#define TEST_SUITE_INIT(name) __CTF_SUITE_INIT(name)
 #define TEST_SUITE_MAKE(name) __CTF_SUITE_MAKE(name)
 /* Use in CTF_SUITE or in CTF_SUITE_MAKE */
 #define TEST_SUITE_LINK(__suite, test) __CTF_SUITE_LINK(__suite, test)
@@ -213,6 +216,8 @@ char *__CTF_LOG_FILE_NAME = "testing.log";
  * @param ... Code to run in the test suite, optionally enclose in semicolons. This is where you link your tests to the suite.
  */
 #define __CTF_SUITE(name, ...) __CTF_SUITE_IMPL(name, __VA_ARGS__)
+
+#define __CTF_SUITE_INIT(name) __CTF_SUITE_INIT_IMPL(name)
 
 /**
  * @brief Used inside of a test suite to link a test to the suite.
@@ -366,35 +371,43 @@ bool __CTF_ASK_USER()
     __CTF_LOG("\n\t%sAssertion failed:%s\n\t\tcond: %s", \
               __CTF_ANSI_RED, __CTF_ANSI_RESET, #cond)
 
+#define __CTF_LOG_ARGS_COLOR(suite, test) "%s[LOG%s%s%s%s]%s ", __CTF_ANSI_YELLOW, suite ? "/" : "", suite ? __ctf_current_test_suite_name : "", test ? "/" : "", test ? __ctf_current_test_name : "", __CTF_ANSI_RESET
+#define __CTF_LOG_ARGS(suite, test) "[LOG%s%s%s%s] ", suite ? "/" : "", suite ? __ctf_current_test_suite_name : "", test ? "/" : "", test ? __ctf_current_test_name : ""
 
-#define __CTF_LOG_ARGS_COLOR(suite,test) "%s[LOG%s%s%s%s]%s ", __CTF_ANSI_YELLOW, suite ? "/" : "", suite ? __ctf_current_test_suite_name : "", test ? "/" : "", test ? __ctf_current_test_name : "", __CTF_ANSI_RESET
-#define __CTF_LOG_ARGS(suite,test) "[LOG%s%s%s%s] ", suite ? "/" : "", suite ? __ctf_current_test_suite_name : "", test ? "/" : "", test ? __ctf_current_test_name : ""
+void __CTF_LOG_FLAIR_FILE(FILE *file, bool suite, bool test)
+{
+    fprintf(file, __CTF_LOG_ARGS(suite, test));
+}
+void __CTF_LOG_FLAIR(bool suite, bool test)
+{
+    printf(__CTF_LOG_ARGS_COLOR(suite, test));
+}
 /**
  * @brief Takes a filename rather than FILE* because we expect a critial error to occur and always want to ensure that the log is written.
  *
  * @note If __CTF_PROCESS_INIT was called then we will use already opened __ctf_log_file. This enables faster logging.
  *
  */
-#define __CTF_LOG_IMPL(filename, ...)                                                                                                                                                          \
-    do                                                                                                                                                                                         \
-    {                                                                                                                                                                                          \
-        bool suite = __ctf_current_test_suite_name != NULL;                                                                                                                                    \
-        bool test = __ctf_current_test_name != NULL;                                                                                                                                           \
-        printf(__CTF_LOG_ARGS_COLOR(suite,test)); \
-        printf(__VA_ARGS__);                                                                                                                                                                   \
-        putchar('\n');                                                                                                                                                                         \
-        FILE *file = __ctf_log_file ? __ctf_log_file : fopen(filename, "a");                                                                                                                   \
-        bool old_use_colors = __ctf_try_use_colors;                                                                                                                                            \
-        __ctf_try_use_colors = false;                                                                                                                                                          \
-        if (file)                                                                                                                                                                              \
-        {                                                                                                                                                                                      \
-            fprintf(file, __CTF_LOG_ARGS(suite,test));                               \
-            fprintf(file, __VA_ARGS__);                                                                                                                                                        \
-            fputc('\n', file);                                                                                                                                                                 \
-            if (!__ctf_log_file)                                                                                                                                                               \
-                fclose(file);                                                                                                                                                                  \
-        }                                                                                                                                                                                      \
-        __ctf_try_use_colors = old_use_colors;                                                                                                                                                 \
+#define __CTF_LOG_IMPL(filename, ...)                                        \
+    do                                                                       \
+    {                                                                        \
+        bool suite = __ctf_current_test_suite_name != NULL;                  \
+        bool test = __ctf_current_test_name != NULL;                         \
+        __CTF_LOG_FLAIR(suite, test);                                        \
+        printf(__VA_ARGS__);                                                 \
+        putchar('\n');                                                       \
+        FILE *file = __ctf_log_file ? __ctf_log_file : fopen(filename, "a"); \
+        bool old_use_colors = __ctf_try_use_colors;                          \
+        __ctf_try_use_colors = false;                                        \
+        if (file)                                                            \
+        {                                                                    \
+            __CTF_LOG_FLAIR_FILE(file, suite, test);                         \
+            fprintf(file, __VA_ARGS__);                                      \
+            fputc('\n', file);                                               \
+            if (!__ctf_log_file)                                             \
+                fclose(file);                                                \
+        }                                                                    \
+        __ctf_try_use_colors = old_use_colors;                               \
     } while (0)
 
 void __CTF_HANDLE_SIGNAL(int sig);
@@ -546,35 +559,43 @@ void __CTF_PROCESS_EXIT_IMPL(void)
 
 void __CTF_SUITE_LINK_IMPL(__CTF_Test_Suite *suite, int (*test_func)(), const char *test_name)
 {
+    if (!suite)
+    {
+        __CTF_LOG("Link Error: Suite is NULL.");
+        return;
+    }
     if (suite->count >= suite->capacity)
     {
         suite->capacity = suite->capacity == 0 ? 1 : suite->capacity * 2;
-        suite->tests = (__CTF_Test *)realloc(suite->tests, suite->capacity * sizeof(__CTF_Test));
+        __CTF_Test *tmp = (__CTF_Test *)realloc(suite->tests, suite->capacity * sizeof(__CTF_Test));
+        if (!tmp)
+        {
+            __CTF_LOG("Link Error: Could not allocate memory for tests.");
+            return;
+        }
+        suite->tests = tmp;
     }
     suite->tests[suite->count].test_func = test_func;
     suite->tests[suite->count].test_name = test_name;
     suite->count++;
 }
 
-#define __CTF_SUITE_IMPL(name, ...)            \
-    __CTF_SUITE_MAKE(name)                     \
-    {                                          \
-        __ctf_current_test_suite_name = #name; \
-        int i = 22 + ((sizeof(#name)/sizeof(char)) - 3), j = i;     \
-        while (i--)                            \
-        {                                      \
-            putchar('+');                      \
-        }                                      \
-        putchar('\n');                         \
-        __CTF_LOG_TIME();                      \
-        __CTF_BLOCK(__VA_ARGS__);              \
-        __CTF_SUITE_END(name);                 \
-        i = j;                                 \
-        while (i--)                            \
-        {                                      \
-            putchar('-');                      \
-        }                                      \
-        putchar('\n');                         \
+#define __CTF_SUITE_INIT_IMPL(name)                                                                                             \
+    __ctf_current_test_suite_name = #name;                                                                                      \
+    int __CTF_SUITE_INIT_IMPL_i = 22 + ((sizeof(#name) / sizeof(char)) - 3), __CTF_SUITE_INIT_IMPL_j = __CTF_SUITE_INIT_IMPL_i; \
+    while (__CTF_SUITE_INIT_IMPL_i--)                                                                                                                 \
+    {                                                                                                                           \
+        putchar('+');                                                                                                           \
+    }                                                                                                                           \
+    putchar('\n');                                                                                                              \
+    __CTF_LOG_TIME();
+
+#define __CTF_SUITE_IMPL(name, ...)  \
+    __CTF_SUITE_MAKE(name)           \
+    {                                \
+        __CTF_SUITE_INIT_IMPL(name); \
+        __CTF_BLOCK(__VA_ARGS__);    \
+        __CTF_SUITE_END(name);       \
     }
 
 #define __CTF_LOG_TIME_IMPL()                                    \
@@ -617,7 +638,13 @@ void __CTF_SUITE_LINK_IMPL(__CTF_Test_Suite *suite, int (*test_func)(), const ch
         free((name##_suite).tests);                                                                                            \
         __ctf_current_test_name = NULL;                                                                                        \
         __ctf_current_test_suite_name = NULL;                                                                                  \
-    } while (0);
+        __CTF_SUITE_INIT_IMPL_i = __CTF_SUITE_INIT_IMPL_j;                                                                     \
+        while (__CTF_SUITE_INIT_IMPL_i--)                                                                                      \
+        {                                                                                                                      \
+            putchar('-');                                                                                                      \
+        }                                                                                                                      \
+        putchar('\n');                                                                                                         \
+    } while (0)
 
 void __CTF_PROCESS_INIT_IMPL(int argc, char **argv)
 {

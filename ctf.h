@@ -583,7 +583,7 @@ void __CTF_SUITE_LINK_IMPL(__CTF_Test_Suite *suite, int (*test_func)(), const ch
 #define __CTF_SUITE_INIT_IMPL(name)                                                                                             \
     __ctf_current_test_suite_name = #name;                                                                                      \
     int __CTF_SUITE_INIT_IMPL_i = 22 + ((sizeof(#name) / sizeof(char)) - 3), __CTF_SUITE_INIT_IMPL_j = __CTF_SUITE_INIT_IMPL_i; \
-    while (__CTF_SUITE_INIT_IMPL_i--)                                                                                                                 \
+    while (__CTF_SUITE_INIT_IMPL_i--)                                                                                           \
     {                                                                                                                           \
         putchar('+');                                                                                                           \
     }                                                                                                                           \
@@ -618,14 +618,14 @@ void __CTF_SUITE_LINK_IMPL(__CTF_Test_Suite *suite, int (*test_func)(), const ch
         __CTF_RESET_SIGNAL_HANDLERS();    \
     } while (0)
 
-#define __CTF_SUITE_MAKE_IMPL(__name)   \
-    __CTF_Test_Suite __name##_suite = { \
-        .tests = NULL,                  \
-        .count = 0,                     \
-        .capacity = 0,                  \
-        .name = #__name,                \
-    };                                  \
-    void __name##_suite_func()
+#define __CTF_SUITE_MAKE_IMPL(__name)          \
+    static __CTF_Test_Suite __name##_suite = { \
+        NULL,                                  \
+        0,                                     \
+        0,                                     \
+        #__name,                               \
+    };                                         \
+    static void __name##_suite_func()
 
 #define __CTF_SUITE_END_IMPL(name)                                                                                             \
     do                                                                                                                         \

@@ -101,7 +101,7 @@
 #define TEST_FAIL_VALUE __CTF_FAIL_VALUE
 #endif
 
-char *__CTF_LOG_FILE_NAME = "testing.log";
+char *__CTF_LOG_FILE_NAME = "ctf.log";
 
 /**
  * @brief Takes the same input as printf. The user does not need newlines at the end of their format strings or messages.

@@ -5,10 +5,10 @@
  * @file testing.h
  * @author Adam Naghavi
  * @brief Single header testing framework for C.
- * @version 0.3
- * @date 2024-06-07
+ * @version 0.4
+ * @date 2025-05-16
  *
- * @copyright Copyright (c) 2024
+ * @copyright Copyright (c) 2025
  *
  * @warning Untested for multi-threaded signal exceptions.
  *
@@ -101,7 +101,7 @@
 #define TEST_FAIL_VALUE __CTF_FAIL_VALUE
 #endif
 
-char *__CTF_LOG_FILE_NAME = "ctf.log";
+static char *__CTF_LOG_FILE_NAME = "ctf.log";
 
 /**
  * @brief Takes the same input as printf. The user does not need newlines at the end of their format strings or messages.
@@ -283,29 +283,31 @@ typedef struct
     const char *name;
 } __CTF_Test_Suite;
 
-char *__ctf_current_test_suite_name = NULL;
-char *__ctf_current_test_name = NULL;
+static char *__ctf_current_test_suite_name = NULL;
+static char *__ctf_current_test_name = NULL;
 
-unsigned int __ctf_suites_ran = 0;
+static unsigned int __ctf_suites_ran = 0;
 
-jmp_buf __ctf_env;
-volatile sig_atomic_t __signal_caught = 0;
+static jmp_buf __ctf_env;
+static volatile sig_atomic_t __signal_caught = 0;
 
-FILE *__ctf_log_file = NULL;
+static FILE *__ctf_log_file = NULL;
 
-clock_t __ctf_process_start_time = -1;
+static clock_t __ctf_process_start_time = -1;
 
 /**
- * @brief Set to true to ask the user if they want to continue testing after a signal is caught.
+ * @brief Set to true to ask the user if they want to continue testing after a signal is caught or quit. If false we will return to testing. If true we will defer to the user.
  *
  * @note When enabled, if you are running the test program from a debugger it may cause the program to hang.
  */
-bool __ctf_handle_signal_ask_user = false;
+static bool __ctf_handle_signal_ask_user = false;
 
-bool __ctf_try_use_colors = true;
+static bool __ctf_try_use_colors = true;
+
+static bool __ctf_use_signal_handlers = true;
 
 /* Meant to be crossplatform */
-bool __CTF_ANSI_COLOR_SUPPORT()
+static bool __CTF_ANSI_COLOR_SUPPORT()
 {
     if (!__ctf_try_use_colors)
     {
@@ -341,12 +343,17 @@ bool __CTF_ANSI_COLOR_SUPPORT()
     return false;
 }
 
-const char *__CTF_ANSI_COLOR(const char *color)
+static const char *__CTF_ANSI_COLOR(const char *color)
 {
-    return __CTF_ANSI_COLOR_SUPPORT() ? color : "";
+    if (!__ctf_try_use_colors)
+        return "";
+    static signed char supported = -1;
+    if (supported == -1)
+        supported = __CTF_ANSI_COLOR_SUPPORT();
+    return supported ? color : "";
 }
 
-bool __CTF_ASK_USER()
+static bool __CTF_ASK_USER()
 {
     fflush(stdin);
     char c = 0;
@@ -374,11 +381,11 @@ bool __CTF_ASK_USER()
 #define __CTF_LOG_ARGS_COLOR(suite, test) "%s[LOG%s%s%s%s]%s ", __CTF_ANSI_YELLOW, suite ? "/" : "", suite ? __ctf_current_test_suite_name : "", test ? "/" : "", test ? __ctf_current_test_name : "", __CTF_ANSI_RESET
 #define __CTF_LOG_ARGS(suite, test) "[LOG%s%s%s%s] ", suite ? "/" : "", suite ? __ctf_current_test_suite_name : "", test ? "/" : "", test ? __ctf_current_test_name : ""
 
-void __CTF_LOG_FLAIR_FILE(FILE *file, bool suite, bool test)
+static void __CTF_LOG_FLAIR_FILE(FILE *file, bool suite, bool test)
 {
     fprintf(file, __CTF_LOG_ARGS(suite, test));
 }
-void __CTF_LOG_FLAIR(bool suite, bool test)
+static void __CTF_LOG_FLAIR(bool suite, bool test)
 {
     printf(__CTF_LOG_ARGS_COLOR(suite, test));
 }
@@ -410,10 +417,24 @@ void __CTF_LOG_FLAIR(bool suite, bool test)
         __ctf_try_use_colors = old_use_colors;                               \
     } while (0)
 
-void __CTF_HANDLE_SIGNAL(int sig);
+static void __CTF_PROCESS_EXIT_IMPL(void)
+{
+    __CTF_LOG("Testing complete. %d suite(s) ran.", __ctf_suites_ran);
+    clock_t end_time = clock();
+    float runtime = (double)(end_time - __ctf_process_start_time) / CLOCKS_PER_SEC;
+    __CTF_LOG("Testing process completed in %fs.", __ctf_process_start_time != -1 ? runtime : -1.0f);
+    if (__ctf_log_file)
+    {
+        fclose(__ctf_log_file);
+        __ctf_log_file = NULL;
+    }
+    exit(0);
+}
+
+static void __CTF_HANDLE_SIGNAL(int sig);
 
 /* Register signal handlers macro */
-void __CTF_REGISTER_SIGNAL_HANDLERS(void)
+static void __CTF_REGISTER_SIGNAL_HANDLERS(void)
 {
     signal(SIGSEGV, __CTF_HANDLE_SIGNAL);
     signal(SIGFPE, __CTF_HANDLE_SIGNAL);
@@ -422,7 +443,7 @@ void __CTF_REGISTER_SIGNAL_HANDLERS(void)
 }
 
 /* Reset signal handlers macro */
-void __CTF_RESET_SIGNAL_HANDLERS(void)
+static void __CTF_RESET_SIGNAL_HANDLERS(void)
 {
     signal(SIGSEGV, SIG_DFL);
     signal(SIGFPE, SIG_DFL);
@@ -435,8 +456,13 @@ void __CTF_RESET_SIGNAL_HANDLERS(void)
 #define __CTF_BUFF_SIZE (__CTF_ERRBUFF_SIZE + 150)
 
 /* Signal handling functions */
-void __CTF_HANDLE_SIGNAL(int sig)
+static void __CTF_HANDLE_SIGNAL(int sig)
 {
+    if (!__ctf_use_signal_handlers)
+    {
+        fprintf(stderr, "Warning: signal handler called despite being disabled.\n");
+    }
+
     const char *signal_name;
     switch (sig)
     {
@@ -473,9 +499,10 @@ void __CTF_HANDLE_SIGNAL(int sig)
     if (__ctf_handle_signal_ask_user)
     {
         printf("Do you want to continue testing? ");
-        if (__CTF_ASK_USER())
+        if (!__CTF_ASK_USER())
         {
-            raise(sig);
+            __CTF_LOG("User chose to exit after signal %d.", sig);
+            __CTF_PROCESS_EXIT_IMPL();
             return;
         }
     }
@@ -535,7 +562,7 @@ void __CTF_HANDLE_SIGNAL(int sig)
  *
  */
 #ifndef CTF_SUITE_RUN_TEST_MACRO_ONLY
-void __CTF_SUITE_RUN_TESTS(__CTF_Test_Suite suite)
+static void __CTF_SUITE_RUN_TESTS(__CTF_Test_Suite suite)
 {
     __CTF_SUITE_RUN_TESTS_IMPL(suite);
 }
@@ -543,21 +570,7 @@ void __CTF_SUITE_RUN_TESTS(__CTF_Test_Suite suite)
 #define __CTF_SUITE_RUN_TESTS(suite) __CTF_SUITE_RUN_TESTS_IMPL(suite)
 #endif
 
-void __CTF_PROCESS_EXIT_IMPL(void)
-{
-    __CTF_LOG("Testing complete. %d suites ran.", __ctf_suites_ran);
-    clock_t end_time = clock();
-    float runtime = (double)(end_time - __ctf_process_start_time) / CLOCKS_PER_SEC;
-    __CTF_LOG("Testing process completed in %fs.", __ctf_process_start_time != -1 ? runtime : -1.0f);
-    if (__ctf_log_file)
-    {
-        fclose(__ctf_log_file);
-        __ctf_log_file = NULL;
-    }
-    exit(0);
-}
-
-void __CTF_SUITE_LINK_IMPL(__CTF_Test_Suite *suite, int (*test_func)(), const char *test_name)
+static void __CTF_SUITE_LINK_IMPL(__CTF_Test_Suite *suite, int (*test_func)(), const char *test_name)
 {
     if (!suite)
     {
@@ -604,19 +617,22 @@ void __CTF_SUITE_LINK_IMPL(__CTF_Test_Suite *suite, int (*test_func)(), const ch
         time(&t);                                                \
         char buff[70];                                           \
         if (strftime(buff, sizeof buff, "%A %c", localtime(&t))) \
-            __CTF_LOG(buff);                                     \
+            __CTF_LOG("%s", buff);                               \
         else                                                     \
             __CTF_LOG("Could not get date and time info.");      \
     }
 
-#define __CTF_SUITE_RUN_IMPL(name)        \
-    do                                    \
-    {                                     \
-        __CTF_REGISTER_SIGNAL_HANDLERS(); \
-        name##_suite_func();              \
-        __ctf_suites_ran++;               \
-        __CTF_RESET_SIGNAL_HANDLERS();    \
+#define __CTF_SUITE_RUN_IMPL(name)                \
+    do                                            \
+    {                                             \
+        if (__ctf_use_signal_handlers)            \
+            __CTF_REGISTER_SIGNAL_HANDLERS();     \
+        name##_suite_func();                      \
+        __ctf_suites_ran++;                       \
+        if (__ctf_use_signal_handlers)            \
+            __CTF_RESET_SIGNAL_HANDLERS();        \
     } while (0)
+
 
 #define __CTF_SUITE_MAKE_IMPL(__name)          \
     static __CTF_Test_Suite __name##_suite = { \
@@ -646,7 +662,7 @@ void __CTF_SUITE_LINK_IMPL(__CTF_Test_Suite *suite, int (*test_func)(), const ch
         putchar('\n');                                                                                                         \
     } while (0)
 
-void __CTF_PROCESS_INIT_IMPL(int argc, char **argv)
+static void __CTF_PROCESS_INIT_IMPL(int argc, char **argv)
 {
     int i;
     for (i = 0; i < argc; i++)
@@ -666,12 +682,16 @@ void __CTF_PROCESS_INIT_IMPL(int argc, char **argv)
                 __CTF_LOG_FILE_NAME = argv[i + 1];
                 i++;
             }
+        } else if (strcmp(argv[i], "-ns") == 0 || strcmp(argv[i], "--no-signal") == 0)
+        {
+            __ctf_use_signal_handlers = false;
         }
         else if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0)
         {
             printf("Usage: %s [-nc|-no-color] [-h|-help]\n", argv[0]);
             printf("Options:\n");
             printf("\t-nc, -no-color\t\tDisable colored output.\n");
+            printf("\t-ns, --no-signal\t\tDisable internal signal handlers (useful for debugging).\n");
             printf("\t-as, --ask-signal\tAsk the user if they want to continue testing after a signal is caught.\n");
             printf("\t-l, --log\t\tSpecify a log file name.\n");
             printf("\t-h, -help\t\tShow this help message.\n");

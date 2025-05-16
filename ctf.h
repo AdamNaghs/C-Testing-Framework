@@ -119,7 +119,7 @@ static char *__CTF_LOG_FILE_NAME = "ctf.log";
  */
 #define __CTF_MAKE(test_name) int test_name##_func()
 
-#define __CTF_PASS_VALUE 1
+#define __CTF_PASS_VALUE 0
 
 #define __CTF_FAIL_VALUE (!(__CTF_PASS_VALUE))
 
